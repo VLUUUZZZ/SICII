@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.sici1.controller.AsignacionesView">
+    <children>
+        <!-- Título -->
+        <Label layoutX="70" layoutY="48" text="Asignación de Activos"
+               style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';"/>
+
+        <!-- Botón Asignar (solo admin) -->
+        <Button fx:id="btnAsignar" text="Asignar" layoutX="650" layoutY="58"
+                prefWidth="100" prefHeight="36"
+                style="-fx-background-color:#1976d2; -fx-text-fill:white; -fx-font-size:16;"/>
+
+        <!-- Buscador principal -->
+        <HBox layoutX="70" layoutY="95" spacing="10">
+            <children>
+                <TextField fx:id="txtBuscar" promptText="Buscar por usuario..." prefWidth="200"/>
+                <Button fx:id="btnBuscar" text="Buscar"/>
+            </children>
+        </HBox>
+
+        <!-- Combos de selección (solo admin) -->
+        <HBox fx:id="hboxCombos" layoutX="70" layoutY="130" spacing="10">
+            <children>
+                <ComboBox fx:id="cmbActivo" promptText="Seleccionar activo" prefWidth="180"/>
+                <ComboBox fx:id="cmbUsuario" promptText="Seleccionar usuario" prefWidth="180"/>
+                <ComboBox fx:id="cmbEdificio" promptText="Seleccionar edificio" prefWidth="180"/>
+                <ComboBox fx:id="cmbUbicacion" promptText="Seleccionar ubicación" prefWidth="180"/>
+            </children>
+        </HBox>
+
+        <!-- Tabla de Asignaciones -->
+        <TableView fx:id="tablaAsignaciones" layoutX="65" layoutY="180"
+                   prefWidth="900" prefHeight="320">
+            <columns>
+                <TableColumn fx:id="colActivo" text="Activo" prefWidth="180"/>
+                <TableColumn fx:id="colUsuario" text="Usuario" prefWidth="180"/>
+                <TableColumn fx:id="colEdificio" text="Edificio" prefWidth="150"/>
+                <TableColumn fx:id="colUbicacion" text="Ubicación" prefWidth="150"/>
+                <TableColumn fx:id="colEstado" text="Estado" prefWidth="100"/>
+                <TableColumn fx:id="colDesasignar" text="" prefWidth="100"/>
+            </columns>
+        </TableView>
+    </children>
+</AnchorPane>

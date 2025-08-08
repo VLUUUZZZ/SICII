@@ -1,0 +1,67 @@
+/* ===== MENÚ LATERAL: ESTILOS DE BOTONES ===== */
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-text-fill: rgba(255,255,255,0.95);
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 0 0 24;
+    -fx-background-radius: 8;
+    -fx-min-height: 36;
+    -fx-pref-width: 150;
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+    -fx-transition: all 0.16s cubic-bezier(.37,.13,.36,.99);
+}
+
+/* Hover: naranja y texto blanco con ligero zoom y sombra */
+.menu-item:hover {
+    -fx-background-color: #ff8800;
+    -fx-text-fill: white;
+    -fx-scale-x: 1.04;
+    -fx-scale-y: 1.08;
+    -fx-font-weight: 900;
+    -fx-effect: dropshadow(gaussian, rgba(255,136,0,0.28), 10, 0, 0, 2);
+}
+
+/* Seleccionado: naranja fijo con sombra */
+.menu-item.selected {
+    -fx-background-color: #ff8800;
+    -fx-text-fill: white;
+    -fx-font-weight: 900;
+    -fx-effect: dropshadow(gaussian, rgba(255,136,0,0.4), 10, 0, 0, 2);
+}
+
+/* Evitar que hover modifique el botón seleccionado */
+.menu-item.selected:hover {
+    -fx-background-color: #ff8800;
+    -fx-text-fill: white;
+}
+
+/* Estado al hacer clic */
+.menu-item:armed {
+    -fx-background-color: #fca311;
+    -fx-text-fill: white;
+}
+
+/* ----------- BOTÓN CERRAR SESIÓN ----------- */
+.logout-btn {
+    -fx-background-color: rgba(239,68,68,0.14);
+    -fx-text-fill: #EF4444;
+    -fx-padding: 15 16 15 16;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-min-height: 36;
+    -fx-pref-width: 160;
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-border-width: 0;
+    -fx-transition: all 0.18s cubic-bezier(.37,.13,.36,.99);
+}
+
+.logout-btn:hover,
+.logout-btn.selected {
+    -fx-background-color: #EF4444;
+    -fx-text-fill: white;
+    -fx-font-weight: 900;
+}

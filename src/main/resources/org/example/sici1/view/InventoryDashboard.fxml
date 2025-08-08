@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Rectangle?>
+
+<BorderPane fx:id="rootPane"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            stylesheets="@/org/example/sici1/styles.css"
+            fx:controller="org.example.sici1.controller.InventoryDashboard">
+
+    <!-- SIDEBAR PREMIUM FIJO -->
+    <left>
+        <VBox fx:id="sidebar"
+              spacing="0"
+              prefWidth="260"
+              minWidth="260"
+              maxWidth="260"
+              style="-fx-background-color:#1A2332;-fx-padding:0;-fx-effect:dropshadow(three-pass-box,rgba(0,0,0,0.15),15,0,0,0);">
+
+            <!-- LOGO INSTITUCIONAL ARRIBA -->
+            <HBox alignment="CENTER" style="-fx-padding:32 0 16 0;">
+                <ImageView fitHeight="72" fitWidth="72" preserveRatio="true">
+                    <image>
+                        <Image url="@/org/example/sici1/1000371304.png"/>
+                    </image>
+                </ImageView>
+            </HBox>
+
+            <!-- Header con rol dinámico -->
+            <HBox alignment="CENTER_LEFT"
+                  style="-fx-background-color:#252F3F;
+                         -fx-background-radius:8;
+                         -fx-min-height:30;
+                         -fx-pref-width:150;
+                         -fx-padding:0 0 0 24;
+                         -fx-margin:0 0 12 0;">
+                <Label fx:id="lblRol"
+                       text="Usuario"
+                       style="-fx-text-fill:#fff;
+                              -fx-font-size:26px;
+                              -fx-font-weight:bold;
+                              -fx-alignment:CENTER_LEFT;"/>
+            </HBox>
+
+            <Rectangle height="3" width="56"
+                       style="-fx-fill:#4361EE;-fx-arc-width:0;-fx-arc-height:0;-fx-translate-y:0;"/>
+
+            <!-- Botones de menú -->
+            <VBox spacing="18" VBox.vgrow="ALWAYS"
+                  style="-fx-padding:20 16 20 16;">
+                <Button fx:id="btnEdificios" styleClass="menu-item" text="Edificio"/>
+                <Button fx:id="btnEspacio" styleClass="menu-item" text="Espacio"/>
+                <Button fx:id="btnUnidadAdministrativa" styleClass="menu-item" text="Unidad Ad"/>
+                <Button fx:id="btnPuesto" styleClass="menu-item" text="Puesto"/>
+                <Button fx:id="btnBienes" styleClass="menu-item" text="Bienes"/>
+                <Button fx:id="btnInventario" styleClass="menu-item" text="Inventario"/>
+                <Button fx:id="btnEmpleado" styleClass="menu-item" text="Empleado"/>
+            </VBox>
+
+            <!-- Footer fijo al fondo -->
+            <VBox spacing="16"
+                  style="-fx-padding:24 16 24 16;-fx-alignment:CENTER_LEFT;-fx-spacing:16;-fx-border-color:rgba(255,255,255,0.07);-fx-border-width:1 0 0 0;">
+                <Button fx:id="btnCerrarSesion" styleClass="logout-btn" text="Cerrar Sesión"/>
+                <Label text="v2.1.0" styleClass="version-label"/>
+            </VBox>
+        </VBox>
+    </left>
+
+    <!-- Área de contenido principal -->
+    <center>
+        <StackPane fx:id="contentArea" style="-fx-background-color:#F8FAFC;-fx-padding:32 24 24 24;"/>
+    </center>
+</BorderPane>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.sici1.controller.PrestamosView">
+
+    <center>
+        <VBox spacing="15">
+            <padding>
+                <Insets top="24" left="24" right="24" bottom="24"/>
+            </padding>
+
+            <Label text="Préstamos y Devoluciones de Artículos" styleClass="title-label">
+                <font>
+                    <Font name="Segoe UI Semibold" size="21"/>
+                </font>
+            </Label>
+
+            <!-- Campos de entrada -->
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <ComboBox fx:id="cmbTipoSolicitante" promptText="Tipo Solicitante" minWidth="130"/>
+                <TextField fx:id="txtRfc" promptText="RFC del Usuario" minWidth="120"/>
+                <TextField fx:id="txtCodigoAcademia" promptText="Código Academia" minWidth="120"/>
+                <TextField fx:id="txtNombre" promptText="Nombre" minWidth="150" editable="false"/>
+                <TextField fx:id="txtResponsableAcademia" promptText="Responsable" minWidth="150" editable="false"/>
+                <TextField fx:id="txtNumArticulo" promptText="Número de Artículo" minWidth="120"/>
+                <TextField fx:id="txtArticulo" promptText="Artículo" minWidth="150" editable="false"/>
+                <DatePicker fx:id="dpFechaPrestamo" promptText="Fecha Préstamo"/>
+                <DatePicker fx:id="dpFechaDevolucion" promptText="Fecha Devolución (opcional)"/>
+            </HBox>
+
+            <!-- Botones con mayor espacio y separados -->
+            <HBox spacing="30" alignment="CENTER">
+                <Button fx:id="btnRegistrar" text="Registrar Préstamo" minWidth="150"/>
+                <Button fx:id="btnDevolver" text="Registrar Devolución" minWidth="150"/>
+                <Button fx:id="btnEliminar" text="Eliminar" minWidth="120"/>
+            </HBox>
+
+            <TableView fx:id="tablaPrestamos" prefHeight="270">
+                <columns>
+                    <TableColumn fx:id="colTipoSolicitante" text="Tipo" prefWidth="80"/>
+                    <TableColumn fx:id="colRfc" text="RFC" prefWidth="100"/>
+                    <TableColumn fx:id="colCodigoAcademia" text="Cod. Academia" prefWidth="110"/>
+                    <TableColumn fx:id="colNombre" text="Nombre / Academia" prefWidth="150"/>
+                    <TableColumn fx:id="colResponsableAcademia" text="Responsable" prefWidth="140"/>
+                    <TableColumn fx:id="colNumArticulo" text="No. Artículo" prefWidth="100"/>
+                    <TableColumn fx:id="colArticulo" text="Artículo" prefWidth="140"/>
+                    <TableColumn fx:id="colFechaPrestamo" text="Fecha Préstamo" prefWidth="120"/>
+                    <TableColumn fx:id="colFechaDevolucion" text="Fecha Devolución" prefWidth="120"/>
+                    <TableColumn fx:id="colEstatus" text="Estatus" prefWidth="90"/>
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                </columnResizePolicy>
+            </TableView>
+        </VBox>
+    </center>
+</BorderPane>

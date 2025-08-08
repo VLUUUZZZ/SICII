@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.sici1.controller.BienesView">
+    <children>
+
+        <!-- Título -->
+        <Label layoutX="70" layoutY="48" text="Bienes"
+               style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';"/>
+
+        <!-- Botón Nuevo -->
+        <Button fx:id="btnNuevo" text="Nuevo" layoutX="650" layoutY="58"
+                prefWidth="100" prefHeight="36"
+                style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;"/>
+
+        <!-- Buscador por código -->
+        <HBox layoutX="70" layoutY="95" spacing="10">
+            <children>
+                <Label text="Buscar por código:"/>
+                <TextField fx:id="txtBuscarCodigo" promptText="Ingrese código..." prefWidth="200"/>
+                <Button fx:id="btnBuscarCodigo" text="Buscar"/>
+            </children>
+        </HBox>
+
+        <!-- Tabla de Bienes -->
+        <TableView fx:id="tableBienes" layoutX="65" layoutY="140"
+                   prefWidth="700" prefHeight="320">
+            <columns>
+                <TableColumn fx:id="colCodigo" text="Código bien" prefWidth="160"/>
+                <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="290"/>
+                <TableColumn fx:id="colEstado" text="Estado" prefWidth="80"/>
+                <TableColumn fx:id="colSwitch" text="" prefWidth="60"/>
+                <TableColumn fx:id="colVer" text="" prefWidth="50"/>
+                <TableColumn fx:id="colEditar" text="" prefWidth="50"/>
+            </columns>
+        </TableView>
+
+    </children>
+</AnchorPane>

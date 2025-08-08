@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.sici1.controller.LoginController"
+            stylesheets="@/org/example/sici1/styles.css">
+
+    <center>
+        <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40;">
+            <!-- SOLO LOGO CIRCULAR AZUL -->
+            <StackPane alignment="CENTER" styleClass="login-logo-circle">
+                <ImageView fx:id="logoImage"
+                           fitWidth="160"
+                           fitHeight="160"
+                           preserveRatio="true">
+                    <image>
+                        <Image url="@/org/example/sici1/1000371305.jpg"/>
+                    </image>
+                </ImageView>
+            </StackPane>
+
+            <Label text="Sistema de Inventario" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+
+            <GridPane hgap="10" vgap="10" alignment="CENTER">
+                <Label text="Usuario:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="usernameField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label text="Contraseña:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <PasswordField fx:id="passwordField" GridPane.rowIndex="1" GridPane.columnIndex="1"
+                               onAction="#handleLogin"/>
+            </GridPane>
+
+            <Button text="INGRESAR" fx:id="loginButton" onAction="#handleLogin"
+                    style="-fx-font-weight: bold; -fx-pref-width: 200;"/>
+
+            <Label fx:id="errorLabel" style="-fx-text-fill: red;"/>
+        </VBox>
+    </center>
+</BorderPane>
