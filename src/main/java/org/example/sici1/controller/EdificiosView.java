@@ -216,6 +216,7 @@ public class EdificiosView {
         }
     }
 
+
     private void mostrarAlerta(String mensaje, Alert.AlertType tipo) {
         Alert alert = new Alert(tipo);
         alert.setTitle("Edificios");
