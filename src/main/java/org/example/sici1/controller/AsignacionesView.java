@@ -33,10 +33,7 @@ import net.sf.jasperreports.view.JasperViewer;
 public class AsignacionesView {
 
     // ===================== Configuración de Conexión =====================
-    private static final String TNS_ADMIN_PATH = "C:/Users/VICTOR UZZIEL/IdeaProjects/SICI1/src/main/resources/org/example/sici1/Wallet_CN4PI23N1E6J6TZS";
-    private static final String JDBC_URL = "jdbc:oracle:thin:@cn4pi23n1e6j6tzs_high";
-    private static final String DB_USER = "ADMIN";
-    private static final String DB_PASS = "Knoxotics_Kashima50";
+
 
     private static DataSource dataSource;
     private static final ExecutorService IO_POOL = Executors.newFixedThreadPool(
