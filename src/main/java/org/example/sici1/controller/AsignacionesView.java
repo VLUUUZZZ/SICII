@@ -79,6 +79,7 @@ public class AsignacionesView {
         precargarCacheCombos();
     }
 
+
     private void configurarTabla() {
         colCodigo.setCellValueFactory(d -> d.getValue().codigoProperty());
         colDescripcion.setCellValueFactory(d -> d.getValue().descripcionProperty());
