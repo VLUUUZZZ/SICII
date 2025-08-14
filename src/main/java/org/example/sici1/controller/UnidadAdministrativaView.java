@@ -24,6 +24,8 @@ public class UnidadAdministrativaView {
     @FXML private Button btnEditar;
     @FXML private Button btnBuscar;
 
+
+
     // === Datos + filtro ===
     private final ObservableList<Unidad> unidades = FXCollections.observableArrayList();
     private final FilteredList<Unidad> unidadesFiltradas = new FilteredList<>(unidades, p -> true);
