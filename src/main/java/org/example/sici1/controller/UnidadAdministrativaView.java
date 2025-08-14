@@ -147,7 +147,8 @@ public class UnidadAdministrativaView {
                 mostrarAlerta("Error", "Ya existe una unidad con ese nombre.", Alert.AlertType.ERROR);
                 return;
             }
-            insertarUnidad(u.getNombre(), "Activo".equalsIgnoreCase(u.getEstado()));
+            insertarUnidad(u.getNombre(),"Activo".equalsIgnoreCase(u.getEstado()));
+
         });
     }
 
