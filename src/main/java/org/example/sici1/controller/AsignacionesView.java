@@ -38,10 +38,7 @@ public class AsignacionesView {
     private static final String DB_USER = "ADMIN";
     private static final String DB_PASS = "Knoxotics_Kashima50";
 
-    private static DataSource dataSource;
-    private static final ExecutorService IO_POOL = Executors.newFixedThreadPool(
-            Math.max(4, Runtime.getRuntime().availableProcessors() / 2)
-    );
+
 
     static {
         System.setProperty("oracle.net.tns_admin", TNS_ADMIN_PATH);
