@@ -1,26 +1,7 @@
-package org.example.sici1.controller;
-
-import javafx.application.Platform;
-import javafx.beans.property.SimpleLongProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.fxml.FXML;
-import javafx.scene.control.*;
-import javafx.scene.control.TableCell;
-import javafx.scene.layout.GridPane;
-
-import oracle.ucp.jdbc.PoolDataSource;
-import oracle.ucp.jdbc.PoolDataSourceFactory;
-
-import javax.sql.DataSource;
-import java.io.InputStream;
-import java.sql.*;
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+private static DataSource dataSource;
+private static final ExecutorService IO_POOL = Executors.newFixedThreadPool(
+        Math.max(4, Runtime.getRuntime().availableProcessors() / 2)
+);
 
 // JasperReports
 import net.sf.jasperreports.engine.JasperExportManager;
@@ -38,7 +19,10 @@ public class AsignacionesView {
     private static final String DB_USER = "ADMIN";
     private static final String DB_PASS = "Knoxotics_Kashima50";
 
-
+    private static DataSource dataSource;
+    private static final ExecutorService IO_POOL = Executors.newFixedThreadPool(
+            Math.max(4, Runtime.getRuntime().availableProcessors() / 2)
+    );
 
     static {
         System.setProperty("oracle.net.tns_admin", TNS_ADMIN_PATH);
