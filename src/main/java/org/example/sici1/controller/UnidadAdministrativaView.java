@@ -1,198 +1,278 @@
 package org.example.sici1.controller;
 
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.sql.*;
 import java.util.Optional;
 
 public class UnidadAdministrativaView {
 
+    // === FXML: coincide con el FXML proporcionado ===
     @FXML private TableView<Unidad> tableUnidades;
     @FXML private TableColumn<Unidad, String> colNombre;
     @FXML private TableColumn<Unidad, String> colEstado;
-    @FXML private TableColumn<Unidad, Void> colSwitch;
-    @FXML private TableColumn<Unidad, Void> colEditar;
     @FXML private TextField txtBuscar;
-    @FXML private Button btnNuevo, btnBuscar;
+    @FXML private Button btnAgregar;
+    @FXML private Button btnEditar;
+    @FXML private Button btnBuscar;
 
+    // === Datos + filtro ===
     private final ObservableList<Unidad> unidades = FXCollections.observableArrayList();
     private final FilteredList<Unidad> unidadesFiltradas = new FilteredList<>(unidades, p -> true);
 
-    private static final String ARCHIVO_UNIDADES =
-            System.getProperty("user.home") + File.separator + "Documents" + File.separator + "unidades_adm.csv";
+    // === Permisos ===
+    private final String userRole = safe(UserSession.getInstance() != null ? UserSession.getInstance().getRole() : "USER");
+    private final boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);
 
-    private final boolean esEmpleado = "EMPLEADO".equalsIgnoreCase(UserSession.getInstance().getRole());
+    // === Config BD ===
+    private static final String SCHEMA_OWNER = "ADMIN";
+    private static final String TBL = "UNIDADES_ADMINISTRATIVAS";
 
     @FXML
     public void initialize() {
         configurarTabla();
         configurarBuscador();
 
-        btnNuevo.setVisible(!esEmpleado);
-        colSwitch.setVisible(!esEmpleado);
-        colEditar.setVisible(!esEmpleado);
+        // Si por algún motivo el FXML cambiara y no hay botón, evitamos NPE
+        if (btnAgregar != null) btnAgregar.setVisible(isAdmin);
+        if (btnEditar  != null) btnEditar.setVisible(isAdmin);
 
         tableUnidades.setItems(unidadesFiltradas);
-
         cargarUnidades();
 
-        if (!esEmpleado) {
-            btnNuevo.setOnAction(e -> mostrarDialogoNuevo());
+        if (isAdmin) {
+            if (btnAgregar != null) {
+                btnAgregar.setOnAction(e -> mostrarDialogoNuevo());
+            }
+            if (btnEditar != null) {
+                btnEditar.setOnAction(e -> {
+                    Unidad sel = tableUnidades.getSelectionModel().getSelectedItem();
+                    if (sel == null) {
+                        mostrarAlerta("Selecciona una fila", "Elige una unidad para editar.", Alert.AlertType.INFORMATION);
+                        return;
+                    }
+                    mostrarDialogoEditar(sel);
+                });
+            }
         }
+
+        // Doble clic: abre editar si eres admin
+        tableUnidades.setRowFactory(tv -> {
+            TableRow<Unidad> row = new TableRow<>();
+            row.setOnMouseClicked(evt -> {
+                if (evt.getClickCount() == 2 && !row.isEmpty() && isAdmin) {
+                    mostrarDialogoEditar(row.getItem());
+                }
+            });
+            return row;
+        });
     }
 
     private void configurarTabla() {
-        colNombre.setCellValueFactory(data -> data.getValue().nombreProperty());
-        colEstado.setCellValueFactory(data -> data.getValue().estadoProperty());
-
-        // Switch de estado SOLO para admin
-        colSwitch.setCellFactory(col -> new TableCell<>() {
-            private final CheckBox check = new CheckBox();
-            {
-                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                check.setDisable(esEmpleado);
-                check.setOnAction(e -> {
-                    Unidad u = getTableView().getItems().get(getIndex());
-                    u.setEstado(check.isSelected() ? "Activo" : "Inactivo");
-                    tableUnidades.refresh();
-                    guardarUnidades();
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) setGraphic(null);
-                else {
-                    Unidad u = getTableView().getItems().get(getIndex());
-                    check.setSelected("Activo".equalsIgnoreCase(u.getEstado()));
-                    setGraphic(check);
-                }
-            }
-        });
-
-        // Columna Editar SOLO para admin
-        colEditar.setCellFactory(col -> new TableCell<>() {
-            private final Button btn = new Button("✎");
-            {
-                btn.setStyle("-fx-background-color: transparent; -fx-font-size: 16; -fx-text-fill: #1976d2;");
-                btn.setOnAction(e -> {
-                    Unidad u = getTableView().getItems().get(getIndex());
-                    mostrarDialogoEditar(u);
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
-            }
-        });
+        // Si usas las property() está bien; PropertyValueFactory también funciona y es claro con FXML
+        if (colNombre != null) {
+            colNombre.setCellValueFactory(data -> data.getValue().nombreProperty());
+            // Alternativa equivalente:
+            // colNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+        }
+        if (colEstado != null) {
+            colEstado.setCellValueFactory(data -> data.getValue().estadoProperty());
+            // Alternativa:
+            // colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
+        }
     }
 
     private void configurarBuscador() {
-        btnBuscar.setOnAction(e -> buscarUnidades());
-        txtBuscar.setOnAction(e -> buscarUnidades());
-        txtBuscar.textProperty().addListener((obs, oldVal, newVal) -> buscarUnidades());
+        if (btnBuscar != null) btnBuscar.setOnAction(e -> buscarUnidades());
+        if (txtBuscar != null) {
+            txtBuscar.setOnAction(e -> buscarUnidades());
+            txtBuscar.textProperty().addListener((obs, oldVal, newVal) -> buscarUnidades());
+        }
     }
 
     private void buscarUnidades() {
-        String textoBusqueda = txtBuscar.getText().toLowerCase().trim();
-        unidadesFiltradas.setPredicate(unidad -> textoBusqueda.isEmpty() ||
-                unidad.getNombre().toLowerCase().contains(textoBusqueda));
+        String texto = (txtBuscar == null || txtBuscar.getText() == null) ? "" : txtBuscar.getText().toLowerCase().trim();
+        unidadesFiltradas.setPredicate(u ->
+                texto.isEmpty() ||
+                        (u.getNombre() != null && u.getNombre().toLowerCase().contains(texto)) ||
+                        (u.getEstado() != null && u.getEstado().toLowerCase().contains(texto))
+        );
     }
 
+    // === Diálogo: NUEVO (nombre + estado) ===
     private void mostrarDialogoNuevo() {
-        TextInputDialog dialog = new TextInputDialog();
+        if (!isAdmin) { mostrarAlerta("No autorizado", "Solo un administrador puede crear unidades.", Alert.AlertType.WARNING); return; }
+
+        Dialog<Unidad> dialog = new Dialog<>();
         dialog.setTitle("Nueva Unidad Administrativa");
-        dialog.setHeaderText("Crear nueva unidad administrativa");
-        dialog.setContentText("Nombre de la unidad:");
-        dialog.getEditor().setPromptText("Ejemplo: División Académica...");
-        dialog.getDialogPane().setPrefWidth(400);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        Optional<String> resultado = dialog.showAndWait();
-        resultado.ifPresent(nombre -> {
-            nombre = nombre.trim();
-            if (nombre.isEmpty()) {
-                mostrarAlerta("Error", "El nombre no puede estar vacío", Alert.AlertType.ERROR);
+        TextField txtNombre = new TextField();
+        txtNombre.setPromptText("Ejemplo: División Académica...");
+        ComboBox<String> cmbEstado = new ComboBox<>();
+        cmbEstado.getItems().addAll("Activo", "Inactivo");
+        cmbEstado.setValue("Activo");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(12);
+        grid.add(new Label("Nombre:"), 0, 0); grid.add(txtNombre, 1, 0);
+        grid.add(new Label("Estado:"), 0, 1); grid.add(cmbEstado, 1, 1);
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                String nombre = safe(txtNombre.getText()).trim();
+                if (nombre.isEmpty()) {
+                    mostrarAlerta("Error", "El nombre no puede estar vacío.", Alert.AlertType.ERROR);
+                    return null;
+                }
+                return new Unidad(0, nombre, cmbEstado.getValue());
+            }
+            return null;
+        });
+
+        Optional<Unidad> res = dialog.showAndWait();
+        res.ifPresent(u -> {
+            if (unidadExiste(u.getNombre())) {
+                mostrarAlerta("Error", "Ya existe una unidad con ese nombre.", Alert.AlertType.ERROR);
                 return;
             }
-
-            if (unidadExiste(nombre)) {
-                mostrarAlerta("Error", "Ya existe una unidad con ese nombre", Alert.AlertType.ERROR);
-                return;
-            }
-
-            unidades.add(new Unidad(nombre, "Activo"));
-            guardarUnidades();
-            buscarUnidades();
+            insertarUnidad(u.getNombre(), "Activo".equalsIgnoreCase(u.getEstado()));
         });
     }
 
+    // === Diálogo: EDITAR (nombre + estado) ===
     private void mostrarDialogoEditar(Unidad unidad) {
-        TextInputDialog dialog = new TextInputDialog(unidad.getNombre());
+        if (!isAdmin) { mostrarAlerta("No autorizado", "Solo un administrador puede editar unidades.", Alert.AlertType.WARNING); return; }
+
+        Dialog<Unidad> dialog = new Dialog<>();
         dialog.setTitle("Editar Unidad Administrativa");
-        dialog.setHeaderText("Modificar nombre de la unidad");
-        dialog.setContentText("Nuevo nombre:");
-        dialog.getEditor().setPromptText("Nombre actualizado");
-        dialog.getDialogPane().setPrefWidth(400);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        Optional<String> resultado = dialog.showAndWait();
-        resultado.ifPresent(nombreNuevo -> {
-            nombreNuevo = nombreNuevo.trim();
-            if (nombreNuevo.isEmpty()) {
-                mostrarAlerta("Error", "El nombre no puede estar vacío", Alert.AlertType.ERROR);
-                return;
+        TextField txtNombre = new TextField(unidad.getNombre());
+        ComboBox<String> cmbEstado = new ComboBox<>();
+        cmbEstado.getItems().addAll("Activo", "Inactivo");
+        cmbEstado.setValue(unidad.getEstado() == null || unidad.getEstado().isBlank() ? "Activo" : unidad.getEstado());
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(12);
+        grid.add(new Label("Nombre:"), 0, 0); grid.add(txtNombre, 1, 0);
+        grid.add(new Label("Estado:"), 0, 1); grid.add(cmbEstado, 1, 1);
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                String nuevoNombre = safe(txtNombre.getText()).trim();
+                if (nuevoNombre.isEmpty()) {
+                    mostrarAlerta("Error", "El nombre no puede estar vacío.", Alert.AlertType.ERROR);
+                    return null;
+                }
+                if (!nuevoNombre.equalsIgnoreCase(unidad.getNombre()) && unidadExiste(nuevoNombre)) {
+                    mostrarAlerta("Error", "Ya existe una unidad con ese nombre.", Alert.AlertType.ERROR);
+                    return null;
+                }
+                return new Unidad(unidad.getId(), nuevoNombre, cmbEstado.getValue());
             }
-
-            if (!nombreNuevo.equals(unidad.getNombre()) && unidadExiste(nombreNuevo)) {
-                mostrarAlerta("Error", "Ya existe una unidad con ese nombre", Alert.AlertType.ERROR);
-                return;
-            }
-
-            unidad.setNombre(nombreNuevo);
-            tableUnidades.refresh();
-            guardarUnidades();
-            buscarUnidades();
+            return null;
         });
+
+        Optional<Unidad> res = dialog.showAndWait();
+        res.ifPresent(u -> actualizarUnidad(unidad, u.getNombre(), u.getEstado()));
     }
 
+    // === BD ===
     private boolean unidadExiste(String nombre) {
-        return unidades.stream().anyMatch(u -> u.getNombre().equalsIgnoreCase(nombre));
+        String sql = "SELECT COUNT(*) FROM " + TBL + " WHERE UPPER(NOMBRE) = UPPER(?)";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            mostrarAlerta("Error", "Error al verificar existencia.", Alert.AlertType.ERROR);
+            return false;
+        }
     }
 
     private void cargarUnidades() {
         unidades.clear();
-        File archivo = new File(ARCHIVO_UNIDADES);
-        if (!archivo.exists()) return;
+        String sql = "SELECT ID, NOMBRE, ACTIVO FROM " + TBL + " ORDER BY NOMBRE";
+        try (Connection cn = getConnection();
+             Statement st = cn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                new FileInputStream(archivo), StandardCharsets.UTF_8))) {
-            String linea;
-            while ((linea = reader.readLine()) != null) {
-                String[] partes = desescapaCSV(linea);
-                if (partes.length >= 2) {
-                    unidades.add(new Unidad(partes[0], partes[1]));
-                }
+            while (rs.next()) {
+                int id = rs.getInt("ID");
+                String nombre = rs.getString("NOMBRE");
+                String estado = "S".equalsIgnoreCase(rs.getString("ACTIVO")) ? "Activo" : "Inactivo";
+                unidades.add(new Unidad(id, nombre, estado));
             }
-        } catch (IOException ex) {
-            mostrarAlerta("Error", "No se pudo leer el archivo de unidades", Alert.AlertType.ERROR);
+        } catch (SQLException ex) {
+            mostrarAlerta("Error", "No se pudo cargar unidades.", Alert.AlertType.ERROR);
         }
     }
 
-    private void guardarUnidades() {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                new FileOutputStream(ARCHIVO_UNIDADES), StandardCharsets.UTF_8))) {
-            for (Unidad u : unidades) {
-                writer.write(escapa(u.getNombre()) + "," + escapa(u.getEstado()));
-                writer.newLine();
+    private void insertarUnidad(String nombre, boolean activo) {
+        if (!isAdmin) { mostrarAlerta("No autorizado", "Solo un administrador puede crear unidades.", Alert.AlertType.WARNING); return; }
+        String sql = "INSERT INTO " + TBL + " (NOMBRE, ACTIVO) VALUES (?, ?)";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            ps.setString(2, activo ? "S" : "N");
+            ps.executeUpdate();
+            cargarUnidades();
+        } catch (SQLException ex) {
+            mostrarAlerta("Error", "No se pudo guardar la unidad.", Alert.AlertType.ERROR);
+        }
+    }
+
+    private void actualizarUnidad(Unidad unidad, String nuevoNombre, String nuevoEstado) {
+        if (!isAdmin) { mostrarAlerta("No autorizado", "Solo un administrador puede editar unidades.", Alert.AlertType.WARNING); return; }
+        String sql = "UPDATE " + TBL + " SET NOMBRE = ?, ACTIVO = ?, ACTUALIZADO_EN = SYSTIMESTAMP WHERE ID = ?";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nuevoNombre);
+            ps.setString(2, "Activo".equalsIgnoreCase(nuevoEstado) ? "S" : "N");
+            ps.setInt(3, unidad.getId());
+            ps.executeUpdate();
+
+            // Refresca modelo local
+            unidad.setNombre(nuevoNombre);
+            unidad.setEstado(nuevoEstado);
+            tableUnidades.refresh();
+        } catch (SQLException ex) {
+            mostrarAlerta("Error", "No se pudo actualizar la unidad.", Alert.AlertType.ERROR);
+        }
+    }
+
+    // Mantengo por si lo llamas desde otro flujo
+    private void actualizarEstadoUnidad(Unidad unidad) {
+        if (!isAdmin) { mostrarAlerta("No autorizado", "Solo un administrador puede cambiar el estado.", Alert.AlertType.WARNING); return; }
+        String sql = "UPDATE " + TBL + " SET ACTIVO = ?, ACTUALIZADO_EN = SYSTIMESTAMP WHERE ID = ?";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, "Activo".equalsIgnoreCase(unidad.getEstado()) ? "S" : "N");
+            ps.setInt(2, unidad.getId());
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            mostrarAlerta("Error", "No se pudo cambiar el estado.", Alert.AlertType.ERROR);
+        }
+    }
+
+    private Connection getConnection() throws SQLException {
+        try {
+            Connection cn = Conexion.conectar();
+            try (Statement st = cn.createStatement()) {
+                st.execute("ALTER SESSION SET CURRENT_SCHEMA=" + SCHEMA_OWNER);
             }
-        } catch (IOException ex) {
-            mostrarAlerta("Error", "No se pudo guardar el archivo de unidades", Alert.AlertType.ERROR);
+            return cn;
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("Driver Oracle no encontrado", e);
         }
     }
 
@@ -204,44 +284,29 @@ public class UnidadAdministrativaView {
         alert.showAndWait();
     }
 
-    private String escapa(String campo) {
-        if (campo == null) return "";
-        String s = campo.replace("\"", "\"\"");
-        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
-            s = "\"" + s + "\"";
-        }
-        return s;
-    }
-
-    private String[] desescapaCSV(String linea) {
-        // Split por comas, soportando comillas
-        java.util.List<String> partes = new java.util.ArrayList<>();
-        boolean enComillas = false;
-        StringBuilder actual = new StringBuilder();
-        for (char c : linea.toCharArray()) {
-            if (c == '"') enComillas = !enComillas;
-            else if (c == ',' && !enComillas) {
-                partes.add(actual.toString());
-                actual.setLength(0);
-            } else actual.append(c);
-        }
-        partes.add(actual.toString());
-        return partes.toArray(new String[0]);
-    }
-
+    // === Modelo ===
     public static class Unidad {
+        private final SimpleIntegerProperty id;        // PK
         private final SimpleStringProperty nombre;
         private final SimpleStringProperty estado;
 
-        public Unidad(String nombre, String estado) {
+        public Unidad(int id, String nombre, String estado) {
+            this.id = new SimpleIntegerProperty(id);
             this.nombre = new SimpleStringProperty(nombre);
             this.estado = new SimpleStringProperty(estado);
         }
+        public int getId() { return id.get(); }
+        public SimpleIntegerProperty idProperty() { return id; }
+
         public String getNombre() { return nombre.get(); }
         public void setNombre(String nombre) { this.nombre.set(nombre); }
+        public SimpleStringProperty nombreProperty() { return nombre; }
+
         public String getEstado() { return estado.get(); }
         public void setEstado(String estado) { this.estado.set(estado); }
-        public SimpleStringProperty nombreProperty() { return nombre; }
         public SimpleStringProperty estadoProperty() { return estado; }
     }
+
+    // Util
+    private static String safe(String s) { return s == null ? "" : s; }
 }

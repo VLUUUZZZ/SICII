@@ -10,7 +10,6 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.event.ActionEvent;
 import javafx.scene.Scene;
-import org.example.sici1.controller.UserSession;
 
 import java.io.IOException;
 import java.util.*;
@@ -30,6 +29,12 @@ public class InventoryDashboard {
     private Button currentSelected;
     private final Map<Button, String> buttonViewMap = new LinkedHashMap<>();
 
+    // Guardamos rol normalizado
+    private final String userRole = (UserSession.getInstance().getRole() == null)
+            ? ""
+            : UserSession.getInstance().getRole().trim().toUpperCase();
+    private final boolean isAdmin = "ADMIN".equals(userRole);
+
     @FXML
     public void initialize() {
         initializeButtonMapping();
@@ -37,6 +42,7 @@ public class InventoryDashboard {
         setupMenuButtonActions();
         setupLogoutButton();
         showWelcomeView();
+
         rootPane.widthProperty().addListener((obs, oldVal, newVal) -> handleResponsiveSidebar(newVal.doubleValue()));
     }
 
@@ -51,28 +57,19 @@ public class InventoryDashboard {
     }
 
     private void applyRoleBasedAccess() {
-        String role = UserSession.getInstance().getRole();
-        if (role == null) return;
+        if (userRole.isEmpty()) {
+            if (lblRol != null) lblRol.setText("Usuario");
+            return;
+        }
 
-        if (role.equalsIgnoreCase("EMPLEADO")) {
-            btnEdificios.setVisible(true);
-            btnEspacio.setVisible(true);
-            btnUnidadAdministrativa.setVisible(true);
-            btnPuesto.setVisible(true);
-            btnBienes.setVisible(true);
-            btnInventario.setVisible(true);
-            btnEmpleado.setVisible(false); // restringido
+        if (userRole.equals("EMPLEADO")) {
+            btnEmpleado.setVisible(false); // Oculto para empleados
             if (lblRol != null) lblRol.setText("Empleado");
-        } else if (role.equalsIgnoreCase("ADMIN")) {
-            btnEdificios.setVisible(true);
-            btnEspacio.setVisible(true);
-            btnUnidadAdministrativa.setVisible(true);
-            btnPuesto.setVisible(true);
-            btnBienes.setVisible(true);
-            btnInventario.setVisible(true);
-            btnEmpleado.setVisible(true);
+        } else if (isAdmin) {
+            btnEmpleado.setVisible(true); // Visible solo para ADMIN
             if (lblRol != null) lblRol.setText("Administrador");
         } else {
+            btnEmpleado.setVisible(false);
             if (lblRol != null) lblRol.setText("Usuario");
         }
     }
@@ -81,6 +78,11 @@ public class InventoryDashboard {
         buttonViewMap.forEach((button, viewName) -> {
             if (button != null) {
                 button.setOnAction(event -> {
+                    // Bloqueo extra: si no es admin y quiere ir a UsuariosView, no lo dejo
+                    if ("UsuariosView".equals(viewName) && !isAdmin) {
+                        showAlert("Acceso denegado", "No tienes permisos para acceder a esta sección.");
+                        return;
+                    }
                     highlightSelectedButton(button);
                     switchView(viewName);
                 });
@@ -101,22 +103,23 @@ public class InventoryDashboard {
     private void showWelcomeView() {
         VBox welcomeBox = new VBox(24);
         welcomeBox.setStyle("-fx-alignment: center; -fx-padding: 70 0 0 0;");
-        Image logoImg = null;
+
         try {
-            logoImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/org/example/sici1/1000371304.png")));
-        } catch (Exception ignored) {}
-        if (logoImg != null) {
+            Image logoImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/org/example/sici1/1000371304.png")));
             ImageView logo = new ImageView(logoImg);
             logo.setFitHeight(120);
             logo.setPreserveRatio(true);
             welcomeBox.getChildren().add(logo);
-        }
+        } catch (Exception ignored) {}
+
         Label title = new Label("Sistema de Inventario Institucional");
         title.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #4361EE;");
         Label desc = new Label("Gestione los bienes y espacios de su institución de forma profesional, segura y eficiente.");
         desc.setStyle("-fx-font-size: 17px; -fx-text-fill: #4A5568; -fx-padding: 10 60 0 60;");
+
         welcomeBox.getChildren().addAll(title, desc);
         contentArea.getChildren().setAll(welcomeBox);
+
         if (currentSelected != null) {
             currentSelected.getStyleClass().remove("selected");
             currentSelected = null;
@@ -129,9 +132,7 @@ public class InventoryDashboard {
                     getClass().getResource(VIEWS_PATH + viewName + ".fxml")));
             contentArea.getChildren().setAll(view);
         } catch (IOException | NullPointerException e) {
-            contentArea.getChildren().setAll(
-                    new Label("No se pudo cargar la vista: " + viewName)
-            );
+            contentArea.getChildren().setAll(new Label("No se pudo cargar la vista: " + viewName));
         }
     }
 
@@ -163,7 +164,7 @@ public class InventoryDashboard {
         Scene scene = new Scene(root, 500, 620);
         loginStage.setScene(scene);
         loginStage.getIcons().add(new Image(
-                Objects.requireNonNull(getClass().getResourceAsStream("/org/example/sici1/1000371304.png"))
+                Objects.requireNonNull(getClass().getResourceAsStream("/org/example/sici1/1000371305.jpg"))
         ));
         loginStage.setResizable(false);
         loginStage.setOnCloseRequest(ev -> javafx.application.Platform.exit());
@@ -182,5 +183,13 @@ public class InventoryDashboard {
             sidebar.setPrefWidth(260);
             sidebar.setMaxWidth(260);
         }
+    }
+
+    private void showAlert(String titulo, String mensaje) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(titulo);
+        alert.setHeaderText(null);
+        alert.setContentText(mensaje);
+        alert.showAndWait();
     }
 }

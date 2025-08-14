@@ -3,39 +3,33 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.example.sici1.controller.BienesView">
+<AnchorPane prefHeight="460.0" prefWidth="789.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.sici1.controller.BienesView">
     <children>
 
         <!-- Título -->
-        <Label layoutX="70" layoutY="48" text="Bienes"
-               style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';"/>
+        <Label layoutX="70" layoutY="48" style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';" text="Bienes" />
 
         <!-- Botón Nuevo -->
-        <Button fx:id="btnNuevo" text="Nuevo" layoutX="650" layoutY="58"
-                prefWidth="100" prefHeight="36"
-                style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;"/>
+        <Button fx:id="btnNuevo" layoutX="650" layoutY="58" prefHeight="36" prefWidth="100" style="-fx-background-color:#1976d2; -fx-text-fill:white; -fx-font-size:16;" text="Nuevo" />
 
         <!-- Buscador por código -->
         <HBox layoutX="70" layoutY="95" spacing="10">
             <children>
-                <Label text="Buscar por código:"/>
-                <TextField fx:id="txtBuscarCodigo" promptText="Ingrese código..." prefWidth="200"/>
-                <Button fx:id="btnBuscarCodigo" text="Buscar"/>
+                <Label text="Buscar por código:" />
+                <TextField fx:id="txtBuscarCodigo" prefWidth="200" promptText="Ingrese código..." />
+                <Button fx:id="btnBuscarCodigo" text="Buscar" />
             </children>
         </HBox>
 
         <!-- Tabla de Bienes -->
-        <TableView fx:id="tableBienes" layoutX="65" layoutY="140"
-                   prefWidth="700" prefHeight="320">
+        <TableView fx:id="tableBienes" layoutX="14.0" layoutY="126.0" prefHeight="320" prefWidth="757.0">
             <columns>
-                <TableColumn fx:id="colCodigo" text="Código bien" prefWidth="160"/>
-                <TableColumn fx:id="colDescripcion" text="Descripción" prefWidth="290"/>
-                <TableColumn fx:id="colEstado" text="Estado" prefWidth="80"/>
-                <TableColumn fx:id="colSwitch" text="" prefWidth="60"/>
-                <TableColumn fx:id="colVer" text="" prefWidth="50"/>
-                <TableColumn fx:id="colEditar" text="" prefWidth="50"/>
+                <TableColumn fx:id="colCodigo" prefWidth="160" text="Código bien" />
+                <TableColumn fx:id="colDescripcion" prefWidth="206.39996337890625" text="Descripción" />
+                <TableColumn fx:id="colMarca" prefWidth="85.60003662109375" text="Marca" />
+                <TableColumn fx:id="colModelo" prefWidth="85.59994506835938" text="Modelo" />
+                <TableColumn fx:id="colSerie" prefWidth="75.4000244140625" text="N.Serie" />
+                <TableColumn fx:id="colEstado" prefWidth="80" text="Estado" />
             </columns>
         </TableView>
 

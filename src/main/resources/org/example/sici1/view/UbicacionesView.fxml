@@ -8,24 +8,30 @@
             fx:controller="org.example.sici1.controller.UbicacionesView">
     <children>
         <!-- Título -->
-        <Label layoutX="70" layoutY="48" text="Ubicaciones"
+        <Label layoutX="70" layoutY="48" text="Espacios"
                style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';"/>
 
-        <!-- Botón Agregar (solo admin) -->
+        <!-- Botón Agregar -->
         <Button fx:id="btnAgregar" text="Agregar" layoutX="650" layoutY="58"
                 prefWidth="100" prefHeight="36"
+                onAction="#onAgregar"
                 style="-fx-background-color:#1976d2; -fx-text-fill:white; -fx-font-size:16;"/>
 
-        <!-- Botón Editar (solo admin) -->
-        <Button fx:id="btnEditar" text="Editar" layoutX="540" layoutY="58"
-                prefWidth="100" prefHeight="36"
-                style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;"/>
+        <!-- Botón Editar (acción principal = editar) con opción interna para Agregar -->
+        <SplitMenuButton fx:id="btnEditar" text="Editar" layoutX="540" layoutY="58"
+                         prefWidth="100" prefHeight="36"
+                         onAction="#onEditar"
+                         style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;">
+            <items>
+                <MenuItem fx:id="miAgregarDesdeEditar" text="Agregar" onAction="#onAgregar"/>
+            </items>
+        </SplitMenuButton>
 
         <!-- Buscador principal -->
         <HBox layoutX="70" layoutY="95" spacing="10">
             <children>
                 <TextField fx:id="txtBuscar" promptText="Buscar ubicación..." prefWidth="200"/>
-                <Button fx:id="btnBuscar" text="Buscar"/>
+                <Button fx:id="btnBuscar" text="Buscar" onAction="#onBuscar"/>
             </children>
         </HBox>
 

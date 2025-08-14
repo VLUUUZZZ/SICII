@@ -7,8 +7,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.sql.*;
 
 public class EdificiosView {
 
@@ -22,10 +21,10 @@ public class EdificiosView {
     private final ObservableList<Edificio> edificios = FXCollections.observableArrayList();
     private final FilteredList<Edificio> edificiosFiltrados = new FilteredList<>(edificios, p -> true);
 
-    private final boolean esEmpleado = "EMPLEADO".equalsIgnoreCase(UserSession.getInstance().getRole());
-
-    private static final String ARCHIVO_EDIFICIOS =
-            System.getProperty("user.home") + File.separator + "Documents" + File.separator + "edificios.csv";
+    // === PERMISOS CORRECTOS ===
+    private final String userRole = UserSession.getInstance().getRole();
+    private final boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);   // <-- SOLO ADMIN MODIFICA
+    private static final String SCHEMA_OWNER = "ADMIN";
 
     @FXML
     public void initialize() {
@@ -34,180 +33,224 @@ public class EdificiosView {
         colNombre.setCellValueFactory(data -> data.getValue().nombreProperty());
         colEstado.setCellValueFactory(data -> data.getValue().estadoProperty());
 
-        // Switch de estado SOLO para admin
-        colSwitch.setCellFactory(col -> new TableCell<>() {
-            private final CheckBox check = new CheckBox();
-            {
-                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                check.setDisable(esEmpleado); // Solo admin puede activar/desactivar
-                check.setOnAction(e -> {
-                    Edificio edificio = getTableView().getItems().get(getIndex());
-                    edificio.setEstado(check.isSelected() ? "Activo" : "Inactivo");
-                    tablaEdificios.refresh();
-                    guardarEdificios();
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    Edificio edificio = getTableView().getItems().get(getIndex());
-                    check.setSelected("Activo".equalsIgnoreCase(edificio.getEstado()));
-                    setGraphic(check);
+        // Visibilidad estricta por rol
+        btnAgregar.setVisible(isAdmin);
+        btnEditar.setVisible(isAdmin);
+        colSwitch.setVisible(isAdmin);    // switch solo admin
+        colEstado.setVisible(true);       // estado siempre visible
+
+        // El switch SOLO se crea si es admin
+        if (isAdmin) {
+            colSwitch.setCellFactory(col -> new TableCell<>() {
+                private final CheckBox check = new CheckBox();
+                {
+                    setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                    check.setOnAction(e -> {
+                        Edificio edificio = getTableView().getItems().get(getIndex());
+                        edificio.setEstado(check.isSelected() ? "Activo" : "Inactivo");
+                        actualizarEstado(edificio); // aplica en BD
+                        tablaEdificios.refresh();
+                    });
                 }
-            }
-        });
+                @Override
+                protected void updateItem(Void item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty) {
+                        setGraphic(null);
+                    } else {
+                        Edificio edificio = getTableView().getItems().get(getIndex());
+                        check.setSelected("Activo".equalsIgnoreCase(edificio.getEstado()));
+                        setGraphic(check);
+                    }
+                }
+            });
+        }
 
-        colSwitch.setVisible(!esEmpleado);
-        colEstado.setVisible(esEmpleado);
-        btnAgregar.setVisible(!esEmpleado);
-        btnEditar.setVisible(!esEmpleado);
-
-        // --- BUSQUEDA ---
+        // Buscador
         btnBuscarNombre.setOnAction(e -> buscarEdificio());
-        txtBuscarNombre.setOnAction(e -> buscarEdificio());
         txtBuscarNombre.textProperty().addListener((obs, oldVal, newVal) -> buscarEdificio());
 
+        // Carga inicial
         cargarEdificios();
 
-        if (!esEmpleado) {
+        // Acciones SOLO para admin
+        if (isAdmin) {
             btnAgregar.setOnAction(e -> agregarEdificio());
             btnEditar.setOnAction(e -> editarEdificio());
         }
     }
 
     private void buscarEdificio() {
-        String textoBusqueda = txtBuscarNombre.getText().toLowerCase().trim();
+        String texto = txtBuscarNombre.getText() == null ? "" : txtBuscarNombre.getText().toLowerCase().trim();
         edificiosFiltrados.setPredicate(edificio ->
-                textoBusqueda.isEmpty() ||
-                        edificio.getNombre().toLowerCase().contains(textoBusqueda)
+                texto.isEmpty() || edificio.getNombre().toLowerCase().contains(texto)
         );
     }
 
+    private void cargarEdificios() {
+        edificios.clear();
+        String sql = "SELECT nombre, activo FROM edificios ORDER BY nombre";
+        try (Connection cn = getConnection();
+             Statement st = cn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String nombre = rs.getString("nombre");
+                String estado = "S".equals(rs.getString("activo")) ? "Activo" : "Inactivo";
+                edificios.add(new Edificio(nombre, estado));
+            }
+        } catch (SQLException e) {
+            mostrarAlerta("Error al cargar edificios.", Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
     private void agregarEdificio() {
+        // Guardia de seguridad: solo admin
+        if (!isAdmin) { mostrarAlerta("No autorizado.", Alert.AlertType.WARNING); return; }
+
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Agregar Edificio");
         dialog.setHeaderText(null);
-        dialog.setContentText("Ingrese el nombre del nuevo edificio/área:");
+        dialog.setContentText("Nombre del edificio:");
 
-        final String[] nombreFinal = new String[1]; // Usar array para variable 'final' en lambda
         dialog.showAndWait().ifPresent(nombre -> {
-            nombreFinal[0] = nombre.trim();
-            if (nombreFinal[0].isEmpty()) {
+            String finalNombre = nombre.trim();
+            if (finalNombre.isEmpty()) {
                 mostrarAlerta("El nombre no puede estar vacío.", Alert.AlertType.WARNING);
                 return;
             }
-            if (edificios.stream().anyMatch(e -> e.getNombre().equalsIgnoreCase(nombreFinal[0]))) {
-                mostrarAlerta("El edificio/área ya existe.", Alert.AlertType.WARNING);
+            if (existeEdificio(finalNombre)) {
+                mostrarAlerta("Ya existe un edificio con ese nombre.", Alert.AlertType.WARNING);
                 return;
             }
-            edificios.add(new Edificio(nombreFinal[0], "Activo"));
-            guardarEdificios();
-            buscarEdificio();
+
+            String sql = "INSERT INTO edificios (nombre, activo) VALUES (?, 'S')";
+            try (Connection cn = getConnection();
+                 PreparedStatement ps = cn.prepareStatement(sql)) {
+
+                ps.setString(1, finalNombre);
+                ps.executeUpdate();
+
+                edificios.add(new Edificio(finalNombre, "Activo"));
+                buscarEdificio();
+            } catch (SQLException e) {
+                mostrarAlerta("Error al agregar el edificio.", Alert.AlertType.ERROR);
+                e.printStackTrace();
+            }
         });
     }
 
     private void editarEdificio() {
+        // Guardia de seguridad: solo admin
+        if (!isAdmin) { mostrarAlerta("No autorizado.", Alert.AlertType.WARNING); return; }
+
         Edificio seleccionado = tablaEdificios.getSelectionModel().getSelectedItem();
         if (seleccionado == null) {
-            mostrarAlerta("Seleccione un edificio/área para editar.", Alert.AlertType.WARNING);
+            mostrarAlerta("Seleccione un edificio para editar.", Alert.AlertType.WARNING);
             return;
         }
 
         TextInputDialog dialog = new TextInputDialog(seleccionado.getNombre());
         dialog.setTitle("Editar Edificio");
         dialog.setHeaderText(null);
-        dialog.setContentText("Modifique el nombre del edificio/área:");
+        dialog.setContentText("Nuevo nombre:");
 
-        final String[] nuevoNombre = new String[1];
-        dialog.showAndWait().ifPresent(nombre -> {
-            nuevoNombre[0] = nombre.trim();
-            if (nuevoNombre[0].isEmpty()) {
+        dialog.showAndWait().ifPresent(nuevo -> {
+            String finalNombre = nuevo.trim();
+            if (finalNombre.isEmpty()) {
                 mostrarAlerta("El nombre no puede estar vacío.", Alert.AlertType.WARNING);
                 return;
             }
-            if (edificios.stream()
-                    .filter(e -> e != seleccionado)
-                    .anyMatch(e -> e.getNombre().equalsIgnoreCase(nuevoNombre[0]))) {
-                mostrarAlerta("El edificio/área ya existe.", Alert.AlertType.WARNING);
+            if (!finalNombre.equalsIgnoreCase(seleccionado.getNombre()) && existeEdificio(finalNombre)) {
+                mostrarAlerta("Ya existe un edificio con ese nombre.", Alert.AlertType.WARNING);
                 return;
             }
-            seleccionado.setNombre(nuevoNombre[0]);
-            tablaEdificios.refresh();
-            guardarEdificios();
-            buscarEdificio();
+
+            String sql = "UPDATE edificios SET nombre = ?, actualizado_en = SYSTIMESTAMP WHERE nombre = ?";
+            try (Connection cn = getConnection();
+                 PreparedStatement ps = cn.prepareStatement(sql)) {
+
+                ps.setString(1, finalNombre);
+                ps.setString(2, seleccionado.getNombre());
+                ps.executeUpdate();
+
+                seleccionado.setNombre(finalNombre);
+                tablaEdificios.refresh();
+                buscarEdificio();
+            } catch (SQLException e) {
+                mostrarAlerta("Error al editar el edificio.", Alert.AlertType.ERROR);
+                e.printStackTrace();
+            }
         });
+    }
+
+    private void actualizarEstado(Edificio edificio) {
+        // Guardia de seguridad: solo admin
+        if (!isAdmin) { mostrarAlerta("No autorizado.", Alert.AlertType.WARNING); return; }
+
+        String sql = "UPDATE edificios SET activo = ?, actualizado_en = SYSTIMESTAMP WHERE nombre = ?";
+        try (Connection cn = getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setString(1, "Activo".equalsIgnoreCase(edificio.getEstado()) ? "S" : "N");
+            ps.setString(2, edificio.getNombre());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            mostrarAlerta("Error al actualizar el estado.", Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    private boolean existeEdificio(String nombre) {
+        String sql = "SELECT COUNT(*) FROM edificios WHERE UPPER(nombre) = UPPER(?)";
+        try (Connection cn = getConnection();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     private void mostrarAlerta(String mensaje, Alert.AlertType tipo) {
         Alert alert = new Alert(tipo);
-        alert.setTitle("Gestión de Edificios");
+        alert.setTitle("Edificios");
         alert.setHeaderText(null);
         alert.setContentText(mensaje);
         alert.showAndWait();
     }
 
-    /** ==== Persistencia en archivo CSV ==== */
-    private void guardarEdificios() {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                new FileOutputStream(ARCHIVO_EDIFICIOS), StandardCharsets.UTF_8))) {
-            for (Edificio e : edificios) {
-                writer.write(escapa(e.getNombre()) + "," + escapa(e.getEstado()));
-                writer.newLine();
+    private Connection getConnection() throws SQLException {
+        try {
+            Connection cn = Conexion.conectar();
+            try (Statement st = cn.createStatement()) {
+                st.execute("ALTER SESSION SET CURRENT_SCHEMA=" + SCHEMA_OWNER);
             }
-        } catch (IOException ex) {
-            mostrarAlerta("No se pudo guardar el archivo de edificios.", Alert.AlertType.ERROR);
+            return cn;
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("No se pudo cargar el driver Oracle", e);
         }
     }
 
-    private void cargarEdificios() {
-        edificios.clear();
-        File archivo = new File(ARCHIVO_EDIFICIOS);
-        if (!archivo.exists()) return;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                new FileInputStream(archivo), StandardCharsets.UTF_8))) {
-            String linea;
-            while ((linea = reader.readLine()) != null) {
-                String[] partes = linea.split(",", 2);
-                String nombre = desescapa(partes[0]);
-                String estado = (partes.length > 1) ? desescapa(partes[1]) : "Activo";
-                edificios.add(new Edificio(nombre, estado));
-            }
-        } catch (IOException ex) {
-            mostrarAlerta("No se pudo leer el archivo de edificios.", Alert.AlertType.ERROR);
-        }
-    }
-
-    private String escapa(String valor) {
-        if (valor == null) return "";
-        String s = valor.replace("\"", "\"\"");
-        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
-            s = "\"" + s + "\"";
-        }
-        return s;
-    }
-
-    private String desescapa(String valor) {
-        if (valor.startsWith("\"") && valor.endsWith("\"")) {
-            valor = valor.substring(1, valor.length()-1).replace("\"\"", "\"");
-        }
-        return valor;
-    }
-
-    // Modelo con estado
+    /** Modelo */
     public static class Edificio {
         private final SimpleStringProperty nombre;
         private final SimpleStringProperty estado;
+
         public Edificio(String nombre, String estado) {
             this.nombre = new SimpleStringProperty(nombre);
             this.estado = new SimpleStringProperty(estado);
         }
+
         public String getNombre() { return nombre.get(); }
         public void setNombre(String nombre) { this.nombre.set(nombre); }
         public String getEstado() { return estado.get(); }
         public void setEstado(String estado) { this.estado.set(estado); }
+
         public SimpleStringProperty nombreProperty() { return nombre; }
         public SimpleStringProperty estadoProperty() { return estado; }
     }

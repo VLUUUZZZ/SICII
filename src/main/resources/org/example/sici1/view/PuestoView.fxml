@@ -16,6 +16,11 @@
                 prefWidth="100" prefHeight="36"
                 style="-fx-background-color:#1976d2; -fx-text-fill:white; -fx-font-size:16;"/>
 
+        <!-- Botón Editar (arriba, junto a Nuevo) -->
+        <Button fx:id="btnEditar" text="Editar" layoutX="540" layoutY="58"
+                prefWidth="100" prefHeight="36"
+                style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;"/>
+
         <!-- Buscador principal -->
         <HBox layoutX="70" layoutY="95" spacing="10">
             <children>
@@ -24,14 +29,12 @@
             </children>
         </HBox>
 
-        <!-- Tabla de Puestos -->
+        <!-- Tabla de Puestos (sin switch ni lápiz) -->
         <TableView fx:id="tablePuestos" layoutX="65" layoutY="140"
                    prefWidth="700" prefHeight="360">
             <columns>
-                <TableColumn fx:id="colNombre" text="Nombre" prefWidth="300"/>
+                <TableColumn fx:id="colNombre" text="Nombre" prefWidth="400"/>
                 <TableColumn fx:id="colEstado" text="Estado" prefWidth="150"/>
-                <TableColumn fx:id="colSwitch" text="" prefWidth="100"/>
-                <TableColumn fx:id="colEditar" text="" prefWidth="80"/>
             </columns>
         </TableView>
     </children>

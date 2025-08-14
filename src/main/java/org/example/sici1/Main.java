@@ -16,11 +16,11 @@ public class Main extends Application {
 
         Scene scene = new Scene(root, 500, 620); // Tamaño sugerido para login, ajusta a tu gusto
 
-        primaryStage.setTitle("Inicio de Sesión - Sistema de Inventario");
+        primaryStage.setTitle("Inicio de Sesión - SICI");
         primaryStage.setScene(scene);
 
         // ICONO personalizado
-        Image icon = new Image(getClass().getResourceAsStream("/org/example/sici1/1000371304.png"));
+        Image icon = new Image(getClass().getResourceAsStream("/org/example/sici1/1000371305.jpg"));
         primaryStage.getIcons().add(icon);
 
         primaryStage.setResizable(false); // Opcional, para evitar que lo hagan más chico

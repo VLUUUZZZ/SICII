@@ -8,7 +8,7 @@
             fx:controller="org.example.sici1.controller.UsuariosView">
     <children>
         <!-- Título -->
-        <Label layoutX="70" layoutY="48" text="Usuarios"
+        <Label layoutX="70" layoutY="48" text="Empleados"
                style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';"/>
 
         <!-- Botón Agregar -->

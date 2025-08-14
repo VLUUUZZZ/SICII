@@ -6,117 +6,124 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.MouseButton;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.sql.*;
 import java.util.Optional;
 
 public class PuestoView {
 
     @FXML private TableView<Puesto> tablePuestos;
-    @FXML private TableColumn<Puesto, String> colNombre, colEstado, colSwitch, colEditar;
+    @FXML private TableColumn<Puesto, String> colNombre, colEstado;
     @FXML private TextField txtBuscar;
-    @FXML private Button btnNuevo, btnBuscar;
+    @FXML private Button btnNuevo, btnBuscar, btnEditar;
 
     private final ObservableList<Puesto> puestos = FXCollections.observableArrayList();
     private final FilteredList<Puesto> puestosFiltrados = new FilteredList<>(puestos);
 
-    private static final String ARCHIVO_PUESTOS =
-            System.getProperty("user.home") + File.separator + "Documents" + File.separator + "puestos.csv";
+    // === PERMISOS ===
+    private final String userRole = UserSession.getInstance().getRole();
+    private final boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole); // <-- Solo admin modifica
 
-    // Detecta si es EMPLEADO
-    private final boolean esEmpleado = "EMPLEADO".equalsIgnoreCase(UserSession.getInstance().getRole());
+    private static final String SCHEMA_OWNER = "ADMIN";
 
     @FXML
     public void initialize() {
         configurarTabla();
         configurarBuscador();
-        configurarVisibilidadSegunRol();
+
+        // Visibilidad por rol
+        btnNuevo.setVisible(isAdmin);
+        btnEditar.setVisible(isAdmin);
+
+        tablePuestos.setItems(puestosFiltrados);
+
         cargarPuestos();
 
-        if (!esEmpleado) {
-            configurarAccionesAdmin();
-        }
+        if (isAdmin) configurarAccionesAdmin();
     }
 
     private void configurarTabla() {
         colNombre.setCellValueFactory(data -> data.getValue().nombreProperty());
         colEstado.setCellValueFactory(data -> data.getValue().estadoProperty());
-
-        // Switch de estado (solo admin puede cambiar)
-        colSwitch.setCellFactory(col -> new TableCell<>() {
-            private final CheckBox check = new CheckBox();
-            {
-                check.setDisable(esEmpleado);
-                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                check.setStyle("-fx-scale-x:1.3; -fx-scale-y:1.3; -fx-border-color: #57ba47; -fx-border-radius: 15;");
-                check.setOnAction(e -> {
-                    Puesto p = getTableView().getItems().get(getIndex());
-                    p.setEstado(check.isSelected() ? "Activo" : "Inactivo");
-                    tablePuestos.refresh();
-                    guardarPuestos();
-                });
-            }
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    Puesto p = getTableView().getItems().get(getIndex());
-                    check.setSelected("Activo".equalsIgnoreCase(p.getEstado()));
-                    setGraphic(check);
-                }
-            }
-        });
-
-        // Columna Editar (solo admin)
-        colEditar.setCellFactory(col -> new TableCell<>() {
-            private final Button btn = new Button("✎");
-            {
-                btn.setStyle("-fx-background-color: transparent; -fx-font-size: 16; -fx-text-fill: #1976d2;");
-                btn.setDisable(esEmpleado);
-                btn.setOnAction(e -> {
-                    Puesto p = getTableView().getItems().get(getIndex());
-                    mostrarDialogoEditar(p);
-                });
-            }
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
-            }
-        });
-
-        tablePuestos.setItems(puestosFiltrados);
     }
 
     private void configurarBuscador() {
         btnBuscar.setOnAction(e -> buscarPuestos());
         txtBuscar.setOnAction(e -> buscarPuestos());
-    }
-
-    private void configurarVisibilidadSegunRol() {
-        btnNuevo.setVisible(!esEmpleado);
-        colSwitch.setVisible(!esEmpleado);
-        colEditar.setVisible(!esEmpleado);
+        txtBuscar.textProperty().addListener((obs, oldVal, newVal) -> buscarPuestos());
     }
 
     private void configurarAccionesAdmin() {
         btnNuevo.setOnAction(e -> mostrarDialogoNuevo());
-    }
 
-    private void buscarPuestos() {
-        String textoBusqueda = txtBuscar.getText().toLowerCase().trim();
+        // Acción principal del botón Editar = Editar seleccionado
+        btnEditar.setOnAction(e -> editarSeleccionado());
 
-        puestosFiltrados.setPredicate(puesto -> {
-            if (textoBusqueda.isEmpty()) return true;
-            return puesto.getNombre().toLowerCase().contains(textoBusqueda);
+        // Menú contextual en el botón Editar para Habilitar/Deshabilitar
+        MenuItem miToggle = new MenuItem("Habilitar / Deshabilitar");
+        miToggle.setOnAction(e -> toggleEstadoSeleccionado());
+
+        ContextMenu menuEditar = new ContextMenu(miToggle);
+
+        // Clic secundario (derecho) en el botón -> muestra menú
+        btnEditar.setOnMousePressed(me -> {
+            if (me.getButton() == MouseButton.SECONDARY) {
+                menuEditar.show(btnEditar, me.getScreenX(), me.getScreenY());
+                me.consume();
+            } else {
+                menuEditar.hide();
+            }
         });
     }
 
+    // ---- Acciones de UI ----
+
+    private void editarSeleccionado() {
+        Puesto seleccionado = getPuestoSeleccionado();
+        if (seleccionado == null) return;
+        mostrarDialogoEditar(seleccionado);
+    }
+
+    private void toggleEstadoSeleccionado() {
+        Puesto seleccionado = getPuestoSeleccionado();
+        if (seleccionado == null) return;
+
+        // Alternar estado
+        boolean activar = !"Activo".equalsIgnoreCase(seleccionado.getEstado());
+        String nuevoEstadoTexto = activar ? "Activo" : "Inactivo";
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirmar cambio de estado");
+        confirm.setHeaderText(null);
+        confirm.setContentText("¿Deseas marcar el puesto \"" + seleccionado.getNombre() + "\" como " + nuevoEstadoTexto + "?");
+
+        Optional<ButtonType> r = confirm.showAndWait();
+        if (r.isPresent() && r.get() == ButtonType.OK) {
+            seleccionado.setEstado(nuevoEstadoTexto);
+            actualizarEstado(seleccionado); // Persiste S/N
+            tablePuestos.refresh();
+        }
+    }
+
+    private Puesto getPuestoSeleccionado() {
+        Puesto p = tablePuestos.getSelectionModel().getSelectedItem();
+        if (p == null) {
+            mostrarAlerta("Atención", "Selecciona un puesto en la tabla.", Alert.AlertType.INFORMATION);
+        }
+        return p;
+    }
+
+    private void buscarPuestos() {
+        String texto = txtBuscar.getText() == null ? "" : txtBuscar.getText().toLowerCase().trim();
+        puestosFiltrados.setPredicate(p ->
+                texto.isEmpty() || p.getNombre().toLowerCase().contains(texto)
+        );
+    }
+
     private void mostrarDialogoNuevo() {
+        if (!isAdmin) { mostrarAlerta("Error", "No autorizado", Alert.AlertType.WARNING); return; }
+
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Nuevo Puesto");
         dialog.setHeaderText("Crear nuevo puesto");
@@ -131,19 +138,17 @@ public class PuestoView {
                 mostrarAlerta("Error", "El nombre no puede estar vacío", Alert.AlertType.ERROR);
                 return;
             }
-
             if (puestoExiste(nombre)) {
                 mostrarAlerta("Error", "Ya existe un puesto con ese nombre", Alert.AlertType.ERROR);
                 return;
             }
-
-            puestos.add(new Puesto(nombre, "Activo"));
-            guardarPuestos();
-            buscarPuestos();
+            insertarPuesto(nombre);
         });
     }
 
     private void mostrarDialogoEditar(Puesto puesto) {
+        if (!isAdmin) { mostrarAlerta("Error", "No autorizado", Alert.AlertType.WARNING); return; }
+
         TextInputDialog dialog = new TextInputDialog(puesto.getNombre());
         dialog.setTitle("Editar Puesto");
         dialog.setHeaderText("Modificar nombre del puesto");
@@ -158,54 +163,100 @@ public class PuestoView {
                 mostrarAlerta("Error", "El nombre no puede estar vacío", Alert.AlertType.ERROR);
                 return;
             }
-
-            if (!nombreNuevo.equals(puesto.getNombre())) {
-                if (puestoExiste(nombreNuevo)) {
-                    mostrarAlerta("Error", "Ya existe un puesto con ese nombre", Alert.AlertType.ERROR);
-                    return;
-                }
+            if (!nombreNuevo.equals(puesto.getNombre()) && puestoExiste(nombreNuevo)) {
+                mostrarAlerta("Error", "Ya existe un puesto con ese nombre", Alert.AlertType.ERROR);
+                return;
             }
-
-            puesto.setNombre(nombreNuevo);
-            tablePuestos.refresh();
-            guardarPuestos();
-            buscarPuestos();
+            actualizarPuesto(puesto.getNombre(), nombreNuevo);
         });
     }
 
-    private boolean puestoExiste(String nombre) {
-        return puestos.stream()
-                .anyMatch(p -> p.getNombre().equalsIgnoreCase(nombre));
-    }
+    // ---- Datos ----
 
     private void cargarPuestos() {
         puestos.clear();
-        File archivo = new File(ARCHIVO_PUESTOS);
-        if (!archivo.exists()) return;
+        String sql = "SELECT nombre, activo FROM puestos ORDER BY nombre";
+        try (Connection cn = getConnection();
+             Statement st = cn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                new FileInputStream(archivo), StandardCharsets.UTF_8))) {
-            String linea;
-            while ((linea = reader.readLine()) != null) {
-                String[] partes = desescapaCSV(linea);
-                if (partes.length >= 2) {
-                    puestos.add(new Puesto(partes[0], partes[1]));
-                }
+            while (rs.next()) {
+                puestos.add(new Puesto(
+                        rs.getString("nombre"),
+                        "S".equals(rs.getString("activo")) ? "Activo" : "Inactivo"
+                ));
             }
-        } catch (IOException ex) {
-            mostrarAlerta("Error", "No se pudo leer el archivo de puestos", Alert.AlertType.ERROR);
+        } catch (SQLException e) {
+            mostrarAlerta("Error", "No se pudo cargar los puestos", Alert.AlertType.ERROR);
+            e.printStackTrace();
         }
     }
 
-    private void guardarPuestos() {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                new FileOutputStream(ARCHIVO_PUESTOS), StandardCharsets.UTF_8))) {
-            for (Puesto p : puestos) {
-                writer.write(escapa(p.getNombre()) + "," + escapa(p.getEstado()));
-                writer.newLine();
+    private void insertarPuesto(String nombre) {
+        if (!isAdmin) { mostrarAlerta("Error", "No autorizado", Alert.AlertType.WARNING); return; }
+
+        String sql = "INSERT INTO puestos (nombre, activo) VALUES (?, 'S')";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            ps.executeUpdate();
+            cargarPuestos();
+        } catch (SQLException e) {
+            mostrarAlerta("Error", "No se pudo insertar el puesto", Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    private void actualizarPuesto(String nombreOriginal, String nuevoNombre) {
+        if (!isAdmin) { mostrarAlerta("Error", "No autorizado", Alert.AlertType.WARNING); return; }
+
+        String sql = "UPDATE puestos SET nombre = ?, actualizado_en = SYSTIMESTAMP WHERE nombre = ?";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nuevoNombre);
+            ps.setString(2, nombreOriginal);
+            ps.executeUpdate();
+            cargarPuestos();
+        } catch (SQLException e) {
+            mostrarAlerta("Error", "No se pudo actualizar el puesto", Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    private void actualizarEstado(Puesto puesto) {
+        if (!isAdmin) { mostrarAlerta("Error", "No autorizado", Alert.AlertType.WARNING); return; }
+
+        String sql = "UPDATE puestos SET activo = ?, actualizado_en = SYSTIMESTAMP WHERE nombre = ?";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, "Activo".equalsIgnoreCase(puesto.getEstado()) ? "S" : "N");
+            ps.setString(2, puesto.getNombre());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            mostrarAlerta("Error", "No se pudo cambiar el estado del puesto", Alert.AlertType.ERROR);
+            e.printStackTrace();
+        }
+    }
+
+    private boolean puestoExiste(String nombre) {
+        String sql = "SELECT COUNT(*) FROM puestos WHERE UPPER(nombre) = UPPER(?)";
+        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
             }
-        } catch (IOException ex) {
-            mostrarAlerta("Error", "No se pudo guardar el archivo de puestos", Alert.AlertType.ERROR);
+        } catch (SQLException e) {
+            mostrarAlerta("Error", "Error al verificar existencia del puesto", Alert.AlertType.ERROR);
+            return false; // no bloquear por error de validación
+        }
+    }
+
+    private Connection getConnection() throws SQLException {
+        try {
+            Connection cn = Conexion.conectar();
+            try (Statement st = cn.createStatement()) {
+                st.execute("ALTER SESSION SET CURRENT_SCHEMA=" + SCHEMA_OWNER);
+            }
+            return cn;
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("Driver Oracle no encontrado", e);
         }
     }
 
@@ -217,44 +268,7 @@ public class PuestoView {
         alert.showAndWait();
     }
 
-    private String escapa(String campo) {
-        if (campo == null) return "";
-        String s = campo.replace("\"", "\"\"");
-        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
-            s = "\"" + s + "\"";
-        }
-        return s;
-    }
-
-    private String[] desescapaCSV(String linea) {
-        java.util.StringTokenizer tok = new java.util.StringTokenizer(linea, ",", true);
-        String[] arr = new String[2];
-        int i = 0;
-        String actual = "";
-        boolean enComillas = false;
-        while (tok.hasMoreTokens() && i < 2) {
-            String token = tok.nextToken();
-            if (token.equals(",")) {
-                if (!enComillas) {
-                    arr[i++] = actual;
-                    actual = "";
-                } else {
-                    actual += ",";
-                }
-            } else if (token.startsWith("\"")) {
-                enComillas = true;
-                actual += token.substring(1);
-            } else if (token.endsWith("\"")) {
-                enComillas = false;
-                actual += token.substring(0, token.length() - 1);
-            } else {
-                actual += token;
-            }
-        }
-        if (i < 2) arr[i] = actual;
-        return arr;
-    }
-
+    // ---- Modelo ----
     public static class Puesto {
         private final SimpleStringProperty nombre;
         private final SimpleStringProperty estado;
