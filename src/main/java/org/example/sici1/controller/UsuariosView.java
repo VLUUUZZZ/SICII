@@ -110,7 +110,7 @@ public class UsuariosView {
 
     /** Trae los puestos para el combo y abre el formulario. */
     private void abrirFormulario(Usuario existente) {
-        Tareas.ejecutar(TITULO, CatalogoRepository.PUESTOS::listarActivos, puestos -> mostrarFormulario(existente, puestos));
+        Tareas.ejecutar(TITULO, CatalogoRepository.PUESTOS::listar, puestos -> mostrarFormulario(existente, puestos));
     }
 
     private void mostrarFormulario(Usuario existente, List<Catalogo> puestos) {
@@ -133,14 +133,14 @@ public class UsuariosView {
         cmbRol.setValue(nuevo ? Usuario.ROL_EMPLEADO : existente.rol());
         cmbRol.setDisable(propio); // evita que el administrador se quite el permiso a sí mismo
 
-        ObservableList<String> nombresPuestos = FXCollections.observableArrayList(
-                puestos.stream().map(Catalogo::nombre).toList());
-        if (!nuevo && !existente.puesto().isEmpty() && !nombresPuestos.contains(existente.puesto())) {
-            nombresPuestos.add(existente.puesto());
-        }
-        ComboBox<String> cmbPuesto = new ComboBox<>(nombresPuestos);
+        // Puestos activos y, si se está editando, también el actual aunque esté inactivo.
+        ComboBox<Catalogo> cmbPuesto = new ComboBox<>(FXCollections.observableArrayList(puestos.stream()
+                .filter(p -> p.activo() || (!nuevo && p.id().equals(existente.puestoId()))).toList()));
         cmbPuesto.setPromptText("Sin puesto");
-        if (!nuevo && !existente.puesto().isEmpty()) cmbPuesto.setValue(existente.puesto());
+        if (!nuevo && existente.puestoId() != null) {
+            cmbPuesto.getItems().stream().filter(p -> p.id().equals(existente.puestoId()))
+                    .findFirst().ifPresent(cmbPuesto::setValue);
+        }
 
         PasswordField txtContrasena = new PasswordField();
         txtContrasena.setPromptText(nuevo ? "Mínimo " + UsuarioRepository.MIN_CONTRASENA + " caracteres"
@@ -166,7 +166,8 @@ public class UsuariosView {
 
         dialog.setResultConverter(bt -> bt == guardar
                 ? new Formulario(new Usuario(txtUsuario.getText(), txtNombre.getText(), cmbRol.getValue(),
-                        cmbPuesto.getValue(), chkActivo.isSelected()), txtContrasena.getText())
+                        cmbPuesto.getValue() == null ? null : cmbPuesto.getValue().id(), null,
+                        chkActivo.isSelected()), txtContrasena.getText())
                 : null);
 
         var resultado = dialog.showAndWait();

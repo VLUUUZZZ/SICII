@@ -46,20 +46,33 @@ class FirestoreEmuladorTest {
         assertTrue(repo.autenticar("ADMIN", DatosIniciales.ADMIN_CONTRASENA_POR_DEFECTO).isPresent());
         assertTrue(repo.autenticar("admin", "incorrecta").isEmpty());
 
-        repo.crear(new Usuario("prueba.uno", "Usuario de Prueba", Usuario.ROL_EMPLEADO, "Docente", true), "clave123");
+        repo.crear(new Usuario("prueba.uno", "Usuario de Prueba", Usuario.ROL_EMPLEADO, null, null, true), "clave123");
         assertThrows(ValidacionException.class,
-                () -> repo.crear(new Usuario("Prueba.Uno", "Otro", Usuario.ROL_EMPLEADO, null, true), "clave123"));
+                () -> repo.crear(new Usuario("Prueba.Uno", "Otro", Usuario.ROL_EMPLEADO, null, null, true), "clave123"));
         assertThrows(ValidacionException.class,
-                () -> repo.crear(new Usuario("corto", "X", Usuario.ROL_EMPLEADO, null, true), "123"));
+                () -> repo.crear(new Usuario("corto", "X", Usuario.ROL_EMPLEADO, null, null, true), "123"));
 
         repo.cambiarActivo("prueba.uno", false);
         assertTrue(repo.autenticar("prueba.uno", "clave123").isEmpty());
-        repo.actualizar(new Usuario("prueba.uno", "Usuario de Prueba", Usuario.ROL_EMPLEADO, "Docente", true), "nueva456");
+        repo.actualizar(new Usuario("prueba.uno", "Usuario de Prueba", Usuario.ROL_EMPLEADO, null, null, true), "nueva456");
         assertTrue(repo.autenticar("prueba.uno", "nueva456").isPresent());
     }
 
     @Test
     @Order(3)
+    void elPuestoDelEmpleadoSeActualizaAlRenombrarlo() {
+        Catalogo puesto = CatalogoRepository.PUESTOS.guardar(new Catalogo(null, "Jefe de área", true));
+        UsuarioRepository.INSTANCIA.crear(
+                new Usuario("prueba.dos", "Otra Persona", Usuario.ROL_EMPLEADO, puesto.id(), null, true), "clave123");
+        assertEquals("Jefe de área", UsuarioRepository.INSTANCIA.buscar("prueba.dos").orElseThrow().puesto());
+
+        CatalogoRepository.PUESTOS.guardar(new Catalogo(puesto.id(), "Jefe de departamento", true));
+        assertEquals("Jefe de departamento", UsuarioRepository.INSTANCIA.buscar("prueba.dos").orElseThrow().puesto());
+        assertEquals("Administrador", UsuarioRepository.INSTANCIA.buscar("admin").orElseThrow().puesto());
+    }
+
+    @Test
+    @Order(4)
     void noPermiteNombresDuplicadosEnCatalogos() {
         CatalogoRepository repo = CatalogoRepository.PUESTOS;
         Catalogo c = repo.guardar(new Catalogo(null, "Coordinador", true));
@@ -71,7 +84,7 @@ class FirestoreEmuladorTest {
     }
 
     @Test
-    @Order(4)
+    @Order(5)
     void asignaBienesAUnInventarioYGeneraElPdf(@TempDir Path tmp) throws Exception {
         Catalogo unidad = CatalogoRepository.UNIDADES_ADMINISTRATIVAS.listarActivos().get(0);
         Espacio espacio = EspacioRepository.INSTANCIA.listarActivos().get(0);
@@ -106,7 +119,7 @@ class FirestoreEmuladorTest {
     }
 
     @Test
-    @Order(5)
+    @Order(6)
     void bienesConCodigoDuplicadoOImagenGrandeSeRechazan() {
         BienRepository repo = BienRepository.INSTANCIA;
         assertThrows(ValidacionException.class,

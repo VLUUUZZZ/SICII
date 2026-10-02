@@ -117,7 +117,7 @@ puestos/{id}                   nombre, activo
 unidadesAdministrativas/{id}   nombre, activo
 espacios/{id}                  nombre, codigo, edificioId, activo
 bienes/{id}                    codigo, descripcion, marca, modelo, numeroSerie, estado, imagen
-usuarios/{username}            nombre, rol, puesto, activo, passwordHash
+usuarios/{username}            nombre, rol, puestoId, activo, passwordHash
 inventarios/{id}               unidadAdministrativaId, espacioId, fecha, responsable, activo
   └── bienes/{bienId}          codigo, agregadoEn
 ```

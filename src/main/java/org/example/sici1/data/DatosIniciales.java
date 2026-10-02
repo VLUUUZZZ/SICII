@@ -30,15 +30,18 @@ public final class DatosIniciales {
             contrasena = ADMIN_CONTRASENA_POR_DEFECTO;
         }
 
-        cargarEjemplos();
-        usuarios.crear(new Usuario(ADMIN_USERNAME, "Administrador del sistema", Usuario.ROL_ADMIN, "Administrador", true),
+        String puestoAdmin = cargarEjemplos();
+        usuarios.crear(new Usuario(ADMIN_USERNAME, "Administrador del sistema", Usuario.ROL_ADMIN, puestoAdmin, null, true),
                 contrasena);
         return contrasena;
     }
 
-    private static void cargarEjemplos() {
+    /** @return el id del puesto "Administrador" si se creó, o null. */
+    private static String cargarEjemplos() {
+        String puestoAdmin = null;
         if (CatalogoRepository.PUESTOS.estaVacio()) {
-            for (String p : List.of("Administrador", "Docente", "Técnico de laboratorio", "Auxiliar administrativo")) {
+            puestoAdmin = CatalogoRepository.PUESTOS.guardar(new Catalogo(null, "Administrador", true)).id();
+            for (String p : List.of("Docente", "Técnico de laboratorio", "Auxiliar administrativo")) {
                 CatalogoRepository.PUESTOS.guardar(new Catalogo(null, p, true));
             }
         }
@@ -60,5 +63,6 @@ public final class DatosIniciales {
             BienRepository.INSTANCIA.guardar(new Bien(null, "PRY-2019-007", "Proyector", "Epson", "PowerLite X41", "EPX41007", Bien.MANTENIMIENTO, null));
             BienRepository.INSTANCIA.guardar(new Bien(null, "MOB-2018-115", "Escritorio de oficina", "", "", "", Bien.OPERATIVO, null));
         }
+        return puestoAdmin;
     }
 }

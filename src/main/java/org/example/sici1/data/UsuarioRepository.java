@@ -4,6 +4,7 @@ import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.FieldValue;
+import org.example.sici1.model.Catalogo;
 import org.example.sici1.model.Usuario;
 import org.example.sici1.util.Contrasenas;
 import org.example.sici1.util.Formato;
@@ -33,18 +34,19 @@ public class UsuarioRepository extends Repositorio {
         DocumentSnapshot d = Firebase.esperar(col().document(Formato.clave(username)).get());
         if (!d.exists() || !bool(d.getBoolean("activo"))) return Optional.empty();
         if (!Contrasenas.verificar(contrasena, d.getString("passwordHash"))) return Optional.empty();
-        return Optional.of(aModelo(d));
+        return Optional.of(aModelo(d, CatalogoRepository.PUESTOS.porId()));
     }
 
     public Optional<Usuario> buscar(String username) {
         if (username == null) return Optional.empty();
         DocumentSnapshot d = Firebase.esperar(col().document(Formato.clave(username)).get());
-        return d.exists() ? Optional.of(aModelo(d)) : Optional.empty();
+        return d.exists() ? Optional.of(aModelo(d, CatalogoRepository.PUESTOS.porId())) : Optional.empty();
     }
 
     public List<Usuario> listar() {
+        Map<String, Catalogo> puestos = CatalogoRepository.PUESTOS.porId();
         return Firebase.esperar(col().get()).getDocuments().stream()
-                .map(UsuarioRepository::aModelo)
+                .map(d -> aModelo(d, puestos))
                 .sorted(Comparator.comparing(u -> Formato.clave(u.username())))
                 .toList();
     }
@@ -105,15 +107,17 @@ public class UsuarioRepository extends Repositorio {
         Map<String, Object> datos = new HashMap<>();
         datos.put("nombre", Formato.texto(u.nombre()));
         datos.put("rol", u.rol());
-        datos.put("puesto", Formato.vacioANull(u.puesto()));
+        datos.put("puestoId", Formato.vacioANull(u.puestoId()));
         datos.put("activo", u.activo());
         return datos;
     }
 
     private CollectionReference col() { return coleccion("usuarios"); }
 
-    private static Usuario aModelo(DocumentSnapshot d) {
-        return new Usuario(d.getString("username"), Formato.texto(d.getString("nombre")),
-                d.getString("rol"), Formato.texto(d.getString("puesto")), bool(d.getBoolean("activo")));
+    private static Usuario aModelo(DocumentSnapshot d, Map<String, Catalogo> puestos) {
+        String puestoId = d.getString("puestoId");
+        Catalogo puesto = puestoId == null ? null : puestos.get(puestoId);
+        return new Usuario(d.getString("username"), Formato.texto(d.getString("nombre")), d.getString("rol"),
+                puestoId, puesto == null ? "" : puesto.nombre(), bool(d.getBoolean("activo")));
     }
 }
