@@ -1,0 +1,10 @@
+rules_version = '2';
+// La aplicación de escritorio usa el Admin SDK (no le aplican estas reglas).
+// Se bloquea cualquier acceso directo desde clientes web o móviles.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
