@@ -1,50 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.layout.HBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.example.sici1.controller.EdificiosView">
+<!-- Vista compartida por Edificios, Puestos y Unidades Administrativas.
+     El controlador (CatalogoController) se asigna desde el panel principal. -->
+<AnchorPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
     <children>
-
-        <!-- Título -->
-        <Label layoutX="70" layoutY="48" text="Edificios"
+        <Label fx:id="lblTitulo" layoutX="70" layoutY="48"
                style="-fx-font-size:26; -fx-font-family:'Segoe UI Semibold';"/>
 
-        <!-- Botón Agregar -->
         <Button fx:id="btnAgregar" text="Agregar" layoutX="650" layoutY="58"
                 prefWidth="100" prefHeight="36"
                 style="-fx-background-color:#1976d2; -fx-text-fill:white; -fx-font-size:16;"/>
 
-        <!-- Botón Editar -->
         <Button fx:id="btnEditar" text="Editar" layoutX="540" layoutY="58"
                 prefWidth="100" prefHeight="36"
                 style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;"/>
 
-        <!-- Buscador principal -->
         <HBox layoutX="70" layoutY="95" spacing="10" alignment="CENTER_LEFT">
             <padding>
                 <Insets top="5" bottom="5" left="5" right="5"/>
             </padding>
             <children>
-                <TextField fx:id="txtBuscarNombre" promptText="Buscar edificio..." prefWidth="200"/>
-                <Button fx:id="btnBuscarNombre" text="Buscar"
+                <TextField fx:id="txtBuscar" prefWidth="200"/>
+                <Button fx:id="btnBuscar" text="Buscar"
                         style="-fx-background-color:#4caf50; -fx-text-fill:white;"/>
             </children>
         </HBox>
 
-        <!-- Tabla de Edificios -->
-        <TableView fx:id="tablaEdificios" layoutX="65" layoutY="140"
-                   prefWidth="700" prefHeight="360">
+        <TableView fx:id="tabla" layoutX="65" layoutY="140" prefWidth="700" prefHeight="360">
             <columns>
-                <TableColumn fx:id="colNombre" text="Edificio/Área" prefWidth="260"/>
-                <TableColumn fx:id="colEstado" text="Estado" prefWidth="90"/>
-                <TableColumn fx:id="colSwitch" text="" prefWidth="60"/>
+                <TableColumn fx:id="colNombre" prefWidth="420"/>
+                <TableColumn fx:id="colEstado" text="Estado" prefWidth="140"/>
+                <TableColumn fx:id="colActivo" text="Activo" prefWidth="80"/>
             </columns>
+            <placeholder>
+                <Label fx:id="lblVacio" text="Cargando..."/>
+            </placeholder>
         </TableView>
-
     </children>
 </AnchorPane>

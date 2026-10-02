@@ -1,22 +1,28 @@
 package org.example.sici1.controller;
 
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.event.ActionEvent;
-import javafx.scene.Scene;
+import org.example.sici1.data.CatalogoRepository;
+import org.example.sici1.model.Usuario;
+import org.example.sici1.util.Alertas;
+import org.example.sici1.util.Sesion;
+import org.example.sici1.util.Ventanas;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
 public class InventoryDashboard {
-
-    private static final String VIEWS_PATH = "/org/example/sici1/view/";
 
     @FXML private BorderPane rootPane;
     @FXML private StackPane contentArea;
@@ -26,170 +32,97 @@ public class InventoryDashboard {
     @FXML private Button btnCerrarSesion, btnEdificios, btnEspacio, btnUnidadAdministrativa,
             btnPuesto, btnBienes, btnInventario, btnEmpleado;
 
-    private Button currentSelected;
-    private final Map<Button, String> buttonViewMap = new LinkedHashMap<>();
-
-    // Guardamos rol normalizado
-    private final String userRole = (UserSession.getInstance().getRole() == null)
-            ? ""
-            : UserSession.getInstance().getRole().trim().toUpperCase();
-    private final boolean isAdmin = "ADMIN".equals(userRole);
+    private Button seleccionado;
+    private final Map<Button, Supplier<Parent>> vistas = new LinkedHashMap<>();
 
     @FXML
     public void initialize() {
-        initializeButtonMapping();
-        applyRoleBasedAccess();
-        setupMenuButtonActions();
-        setupLogoutButton();
-        showWelcomeView();
+        vistas.put(btnEdificios, () -> catalogo("Edificios", "Edificio/Área", CatalogoRepository.EDIFICIOS));
+        vistas.put(btnEspacio, () -> Ventanas.cargar("UbicacionesView", null));
+        vistas.put(btnUnidadAdministrativa,
+                () -> catalogo("Unidades Administrativas", "Nombre", CatalogoRepository.UNIDADES_ADMINISTRATIVAS));
+        vistas.put(btnPuesto, () -> catalogo("Puestos", "Nombre", CatalogoRepository.PUESTOS));
+        vistas.put(btnBienes, () -> Ventanas.cargar("BienesView", null));
+        vistas.put(btnInventario, () -> Ventanas.cargar("AsignacionesView", null));
+        vistas.put(btnEmpleado, () -> Ventanas.cargar("UsuariosView", null));
 
-        rootPane.widthProperty().addListener((obs, oldVal, newVal) -> handleResponsiveSidebar(newVal.doubleValue()));
+        aplicarPermisos();
+        vistas.forEach((boton, vista) -> boton.setOnAction(e -> abrir(boton, vista)));
+        btnCerrarSesion.setOnAction(this::cerrarSesion);
+        mostrarBienvenida();
+
+        rootPane.widthProperty().addListener((obs, a, ancho) -> ajustarMenu(ancho.doubleValue()));
     }
 
-    private void initializeButtonMapping() {
-        buttonViewMap.put(btnEdificios, "EdificiosView");
-        buttonViewMap.put(btnEspacio, "UbicacionesView");
-        buttonViewMap.put(btnUnidadAdministrativa, "UnidadAdministrativaView");
-        buttonViewMap.put(btnPuesto, "PuestoView");
-        buttonViewMap.put(btnBienes, "BienesView");
-        buttonViewMap.put(btnInventario, "AsignacionesView");
-        buttonViewMap.put(btnEmpleado, "UsuariosView");
+    private static Parent catalogo(String titulo, String columna, CatalogoRepository repo) {
+        return Ventanas.cargar("CatalogoView", new CatalogoController(titulo, columna, repo));
     }
 
-    private void applyRoleBasedAccess() {
-        if (userRole.isEmpty()) {
-            if (lblRol != null) lblRol.setText("Usuario");
+    private void aplicarPermisos() {
+        boolean admin = Sesion.esAdmin();
+        btnEmpleado.setVisible(admin);
+        btnEmpleado.setManaged(admin);
+        if (lblRol != null) {
+            lblRol.setText(admin ? "Administrador"
+                    : Usuario.ROL_EMPLEADO.equals(Sesion.rol()) ? "Empleado" : "Usuario");
+        }
+    }
+
+    private void abrir(Button boton, Supplier<Parent> vista) {
+        if (boton == btnEmpleado && !Sesion.esAdmin()) {
+            Alertas.aviso("Acceso denegado", "No tienes permisos para acceder a esta sección.");
             return;
         }
-
-        if (userRole.equals("EMPLEADO")) {
-            btnEmpleado.setVisible(false); // Oculto para empleados
-            if (lblRol != null) lblRol.setText("Empleado");
-        } else if (isAdmin) {
-            btnEmpleado.setVisible(true); // Visible solo para ADMIN
-            if (lblRol != null) lblRol.setText("Administrador");
-        } else {
-            btnEmpleado.setVisible(false);
-            if (lblRol != null) lblRol.setText("Usuario");
-        }
-    }
-
-    private void setupMenuButtonActions() {
-        buttonViewMap.forEach((button, viewName) -> {
-            if (button != null) {
-                button.setOnAction(event -> {
-                    // Bloqueo extra: si no es admin y quiere ir a UsuariosView, no lo dejo
-                    if ("UsuariosView".equals(viewName) && !isAdmin) {
-                        showAlert("Acceso denegado", "No tienes permisos para acceder a esta sección.");
-                        return;
-                    }
-                    highlightSelectedButton(button);
-                    switchView(viewName);
-                });
-            }
-        });
-    }
-
-    private void highlightSelectedButton(Button selected) {
-        if (currentSelected != null && currentSelected != selected) {
-            currentSelected.getStyleClass().remove("selected");
-        }
-        if (!selected.getStyleClass().contains("selected")) {
-            selected.getStyleClass().add("selected");
-        }
-        currentSelected = selected;
-    }
-
-    private void showWelcomeView() {
-        VBox welcomeBox = new VBox(24);
-        welcomeBox.setStyle("-fx-alignment: center; -fx-padding: 70 0 0 0;");
-
+        marcar(boton);
         try {
-            Image logoImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/org/example/sici1/1000371304.png")));
-            ImageView logo = new ImageView(logoImg);
-            logo.setFitHeight(120);
-            logo.setPreserveRatio(true);
-            welcomeBox.getChildren().add(logo);
-        } catch (Exception ignored) {}
+            contentArea.getChildren().setAll(vista.get());
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            contentArea.getChildren().setAll(new Label("No se pudo cargar la vista: " + boton.getText()));
+        }
+    }
 
-        Label title = new Label("Sistema de Inventario Institucional");
-        title.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #4361EE;");
-        Label desc = new Label("Gestione los bienes y espacios de su institución de forma profesional, segura y eficiente.");
+    private void marcar(Button boton) {
+        if (seleccionado != null) seleccionado.getStyleClass().remove("selected");
+        if (boton != null && !boton.getStyleClass().contains("selected")) boton.getStyleClass().add("selected");
+        seleccionado = boton;
+    }
+
+    private void mostrarBienvenida() {
+        VBox caja = new VBox(24);
+        caja.setStyle("-fx-alignment: center; -fx-padding: 70 0 0 0;");
+
+        var logo = getClass().getResourceAsStream("/org/example/sici1/1000371304.png");
+        if (logo != null) {
+            ImageView imagen = new ImageView(new Image(logo));
+            imagen.setFitHeight(120);
+            imagen.setPreserveRatio(true);
+            caja.getChildren().add(imagen);
+        }
+
+        Label titulo = new Label("Sistema de Inventario Institucional");
+        titulo.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #4361EE;");
+        String nombre = Sesion.usuario() == null ? "" : ", " + Sesion.usuario().nombre();
+        Label desc = new Label("Bienvenido" + nombre + ". Gestione los bienes y espacios de su institución.");
         desc.setStyle("-fx-font-size: 17px; -fx-text-fill: #4A5568; -fx-padding: 10 60 0 60;");
 
-        welcomeBox.getChildren().addAll(title, desc);
-        contentArea.getChildren().setAll(welcomeBox);
-
-        if (currentSelected != null) {
-            currentSelected.getStyleClass().remove("selected");
-            currentSelected = null;
-        }
+        caja.getChildren().addAll(titulo, desc);
+        contentArea.getChildren().setAll(caja);
+        marcar(null);
     }
 
-    private void switchView(String viewName) {
-        try {
-            Parent view = FXMLLoader.load(Objects.requireNonNull(
-                    getClass().getResource(VIEWS_PATH + viewName + ".fxml")));
-            contentArea.getChildren().setAll(view);
-        } catch (IOException | NullPointerException e) {
-            contentArea.getChildren().setAll(new Label("No se pudo cargar la vista: " + viewName));
-        }
+    private void cerrarSesion(ActionEvent event) {
+        if (!Alertas.confirmar("Cerrar sesión", "¿Está seguro que desea cerrar sesión?")) return;
+        Sesion.cerrar();
+        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        Ventanas.mostrarLogin(stage);
     }
 
-    private void setupLogoutButton() {
-        btnCerrarSesion.setOnAction(this::handleLogout);
-    }
-
-    private void handleLogout(ActionEvent event) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "¿Está seguro que desea cerrar sesión?",
-                ButtonType.YES, ButtonType.NO);
-
-        if (confirm.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
-            UserSession.getInstance().clear();
-            try {
-                returnToLoginScreen(event);
-            } catch (IOException ex) {
-                contentArea.getChildren().setAll(new Label("Error al cerrar sesión"));
-            }
-        }
-    }
-
-    private void returnToLoginScreen(ActionEvent event) throws IOException {
-        Stage currentStage = (Stage) ((javafx.scene.Node) event.getSource()).getScene().getWindow();
-        Parent root = FXMLLoader.load(Objects.requireNonNull(
-                getClass().getResource("/org/example/sici1/view/login.fxml")));
-        Stage loginStage = new Stage();
-        loginStage.setTitle("Inicio de Sesión");
-        Scene scene = new Scene(root, 500, 620);
-        loginStage.setScene(scene);
-        loginStage.getIcons().add(new Image(
-                Objects.requireNonNull(getClass().getResourceAsStream("/org/example/sici1/1000371305.jpg"))
-        ));
-        loginStage.setResizable(false);
-        loginStage.setOnCloseRequest(ev -> javafx.application.Platform.exit());
-        currentStage.close();
-        loginStage.show();
-    }
-
-    private void handleResponsiveSidebar(double width) {
+    private void ajustarMenu(double ancho) {
         if (sidebar == null) return;
-        if (width < 800) {
-            sidebar.setMinWidth(56);
-            sidebar.setPrefWidth(56);
-            sidebar.setMaxWidth(56);
-        } else {
-            sidebar.setMinWidth(260);
-            sidebar.setPrefWidth(260);
-            sidebar.setMaxWidth(260);
-        }
-    }
-
-    private void showAlert(String titulo, String mensaje) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        alert.showAndWait();
+        double w = ancho < 800 ? 56 : 260;
+        sidebar.setMinWidth(w);
+        sidebar.setPrefWidth(w);
+        sidebar.setMaxWidth(w);
     }
 }
