@@ -36,3 +36,13 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### Firebase ###
+# La llave de la cuenta de servicio NUNCA se sube al repositorio
+firebase-credentials.json
+*-firebase-adminsdk-*.json
+firestore-debug.log
+firebase-debug.log
+.firebase/
+
+### Reportes generados ###
+*.pdf
