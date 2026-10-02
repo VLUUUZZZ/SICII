@@ -7,7 +7,7 @@
               leftMargin="30" rightMargin="30" topMargin="30" bottomMargin="30">
 
     <style name="Base" isDefault="true" fontName="SansSerif" fontSize="9"/>
-    <style name="Encabezado" fontSize="9" isBold="true" forecolor="#FFFFFF" backcolor="#1976D2" mode="Opaque"/>
+    <style name="Encabezado" fontSize="9" isBold="true" pdfFontName="Helvetica-Bold" forecolor="#FFFFFF" backcolor="#1976D2" mode="Opaque"/>
 
     <parameter name="INSTITUCION" class="java.lang.String"/>
     <parameter name="FOLIO" class="java.lang.String"/>
@@ -29,7 +29,7 @@
         <band height="130">
             <textField>
                 <reportElement x="0" y="0" width="535" height="20"/>
-                <textElement textAlignment="Center"><font size="13" isBold="true"/></textElement>
+                <textElement textAlignment="Center"><font size="13" isBold="true" pdfFontName="Helvetica-Bold"/></textElement>
                 <textFieldExpression><![CDATA[$P{INSTITUCION}]]></textFieldExpression>
             </textField>
             <staticText>
@@ -39,22 +39,22 @@
             </staticText>
             <line><reportElement x="0" y="46" width="535" height="1"/></line>
 
-            <staticText><reportElement x="0" y="54" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Unidad administrativa:]]></text></staticText>
+            <staticText><reportElement x="0" y="54" width="125" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Unidad administrativa:]]></text></staticText>
             <textField><reportElement x="125" y="54" width="240" height="14"/><textFieldExpression><![CDATA[$P{UNIDAD_ADMINISTRATIVA}]]></textFieldExpression></textField>
-            <staticText><reportElement x="370" y="54" width="45" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Folio:]]></text></staticText>
+            <staticText><reportElement x="370" y="54" width="45" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Folio:]]></text></staticText>
             <textField><reportElement x="415" y="54" width="120" height="14"/><textFieldExpression><![CDATA[$P{FOLIO}]]></textFieldExpression></textField>
 
-            <staticText><reportElement x="0" y="70" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Espacio:]]></text></staticText>
+            <staticText><reportElement x="0" y="70" width="125" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Espacio:]]></text></staticText>
             <textField><reportElement x="125" y="70" width="240" height="14"/><textFieldExpression><![CDATA[$P{ESPACIO}]]></textFieldExpression></textField>
-            <staticText><reportElement x="370" y="70" width="45" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Fecha:]]></text></staticText>
+            <staticText><reportElement x="370" y="70" width="45" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Fecha:]]></text></staticText>
             <textField><reportElement x="415" y="70" width="120" height="14"/><textFieldExpression><![CDATA[$P{FECHA}]]></textFieldExpression></textField>
 
-            <staticText><reportElement x="0" y="86" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Edificio:]]></text></staticText>
+            <staticText><reportElement x="0" y="86" width="125" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Edificio:]]></text></staticText>
             <textField><reportElement x="125" y="86" width="240" height="14"/><textFieldExpression><![CDATA[$P{EDIFICIO}]]></textFieldExpression></textField>
 
-            <staticText><reportElement x="0" y="102" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Responsable:]]></text></staticText>
+            <staticText><reportElement x="0" y="102" width="125" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Responsable:]]></text></staticText>
             <textField><reportElement x="125" y="102" width="240" height="14"/><textFieldExpression><![CDATA[$P{RESPONSABLE}]]></textFieldExpression></textField>
-            <staticText><reportElement x="370" y="102" width="45" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Puesto:]]></text></staticText>
+            <staticText><reportElement x="370" y="102" width="45" height="14"/><textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement><text><![CDATA[Puesto:]]></text></staticText>
             <textField isBlankWhenNull="true"><reportElement x="415" y="102" width="120" height="14"/><textFieldExpression><![CDATA[$P{PUESTO}]]></textFieldExpression></textField>
         </band>
     </title>
@@ -95,7 +95,7 @@
         <band height="110">
             <textField>
                 <reportElement x="0" y="8" width="535" height="14"/>
-                <textElement><font isBold="true"/></textElement>
+                <textElement><font isBold="true" pdfFontName="Helvetica-Bold"/></textElement>
                 <textFieldExpression><![CDATA["Total de bienes: " + $V{REPORT_COUNT}]]></textFieldExpression>
             </textField>
             <line><reportElement x="40" y="80" width="190" height="1"/></line>
