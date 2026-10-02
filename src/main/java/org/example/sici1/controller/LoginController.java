@@ -48,6 +48,9 @@ public class LoginController {
 
     @FXML
     private void handleLogin(ActionEvent event) {
+        // Enter en la contraseña también llega aquí: no intentar mientras se conecta o verifica.
+        if (loginButton != null && loginButton.isDisabled()) return;
+
         String username = usernameField.getText() == null ? "" : usernameField.getText().trim();
         String contrasena = passwordField.getText() == null ? "" : passwordField.getText();
 
