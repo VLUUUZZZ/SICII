@@ -31,6 +31,9 @@
                 <TableColumn fx:id="colSerie" prefWidth="75.4000244140625" text="N.Serie" />
                 <TableColumn fx:id="colEstado" prefWidth="80" text="Estado" />
             </columns>
+            <placeholder>
+                <Label fx:id="lblVacio" text="Cargando..." />
+            </placeholder>
         </TableView>
 
     </children>

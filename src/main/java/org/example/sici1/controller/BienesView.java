@@ -1,389 +1,171 @@
 package org.example.sici1.controller;
 
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.print.PrinterJob;
 import javafx.stage.FileChooser;
+import org.example.sici1.data.BienRepository;
+import org.example.sici1.model.Bien;
+import org.example.sici1.util.Alertas;
+import org.example.sici1.util.Formato;
+import org.example.sici1.util.Sesion;
+import org.example.sici1.util.Tablas;
+import org.example.sici1.util.Tareas;
 
-import java.io.*;
-import java.sql.*;
-import java.util.Arrays;
-import java.util.Optional;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
+/**
+ * Catálogo de bienes. El administrador puede dar de alta y editar; los demás solo consultar.
+ */
 public class BienesView {
 
-    // --- Controles con los mismos fx:id del FXML ---
+    private static final String TITULO = "Bienes";
+
     @FXML private TableView<Bien> tableBienes;
     @FXML private TableColumn<Bien, String> colCodigo, colDescripcion, colMarca, colModelo, colSerie, colEstado;
-    @FXML private Button btnNuevo, btnImprimir, btnBuscarCodigo;
+    @FXML private Button btnNuevo, btnBuscarCodigo;
     @FXML private TextField txtBuscarCodigo;
+    @FXML private Label lblVacio;
 
+    private final boolean admin = Sesion.esAdmin();
+    private final BienRepository repo = BienRepository.INSTANCIA;
     private final ObservableList<Bien> bienes = FXCollections.observableArrayList();
-    private final FilteredList<Bien> bienesFiltrados = new FilteredList<>(bienes, p -> true);
-
-    private final String userRole = UserSession.getInstance().getRole();
-    private final boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);
-    private static final String SCHEMA_OWNER = "ADMIN";
-
-    // Posibles nombres de columnas en BD (ajústalos si tu esquema usa otros)
-    private static final String[] COLS_CODIGO = {"codigo_inventario", "codigo", "id_bien"};
-    private static final String[] COLS_DESC   = {"descripcion", "descripcion_bien"};
-    private static final String[] COLS_MARCA  = {"marca"};
-    private static final String[] COLS_MODELO = {"modelo"};
-    private static final String[] COLS_SERIE  = {"numero_serie", "n_serie", "no_serie", "num_serie"};
-    private static final String[] COLS_ESTADO = {"estado"};
-    private static final String[] COLS_IMAGEN = {"imagen"};
+    private final FilteredList<Bien> filtrados = new FilteredList<>(bienes, b -> true);
 
     @FXML
     public void initialize() {
-        // Mapeo columnas -> propiedades
-        colCodigo.setCellValueFactory(d -> d.getValue().codigoProperty());
-        colDescripcion.setCellValueFactory(d -> d.getValue().descripcionProperty());
-        colMarca.setCellValueFactory(d -> d.getValue().marcaProperty());
-        colModelo.setCellValueFactory(d -> d.getValue().modeloProperty());
-        colSerie.setCellValueFactory(d -> d.getValue().numeroSerieProperty());
-        colEstado.setCellValueFactory(d -> d.getValue().estadoProperty());
+        Tablas.texto(colCodigo, Bien::codigo);
+        Tablas.texto(colDescripcion, Bien::descripcion);
+        Tablas.texto(colMarca, Bien::marca);
+        Tablas.texto(colModelo, Bien::modelo);
+        Tablas.texto(colSerie, Bien::numeroSerie);
+        Tablas.texto(colEstado, Bien::estado);
+        tableBienes.setItems(filtrados);
 
-        // Permisos por rol
-        btnNuevo.setVisible(isAdmin);
+        btnNuevo.setVisible(admin);
+        if (admin) btnNuevo.setOnAction(e -> mostrarFormulario(null));
 
-        // Acciones
-        btnBuscarCodigo.setOnAction(e -> buscarPorCodigo());
-        txtBuscarCodigo.setOnAction(e -> buscarPorCodigo());
-        if (isAdmin) {
-            btnNuevo.setOnAction(e -> mostrarDialogoBien(null, true));
-        }
+        btnBuscarCodigo.setOnAction(e -> filtrar());
+        txtBuscarCodigo.textProperty().addListener((obs, a, b) -> filtrar());
 
-        // Doble clic: ver (usuario) / editar (admin)
-        tableBienes.setRowFactory(tv -> {
-            TableRow<Bien> row = new TableRow<>();
-            row.setOnMouseClicked(evt -> {
-                if (evt.getClickCount() == 2 && !row.isEmpty()) {
-                    Bien b = row.getItem();
-                    if (isAdmin) mostrarDialogoBien(b, false);
-                    else verBien(b);
-                }
-            });
-            return row;
+        // Doble clic: el administrador edita, los demás solo ven el detalle
+        Tablas.dobleClic(tableBienes, b -> { if (admin) mostrarFormulario(b); else verDetalle(b); });
+
+        cargar();
+    }
+
+    private void cargar() {
+        Tareas.ejecutar(TITULO, repo::listar, lista -> {
+            bienes.setAll(lista);
+            lblVacio.setText("No hay bienes registrados");
         });
-
-        tableBienes.setItems(bienesFiltrados);
-        cargarBienes();
     }
 
-    // --- Buscar por código ---
-    private void buscarPorCodigo() {
-        String codigo = txtBuscarCodigo.getText() == null ? "" : txtBuscarCodigo.getText().trim().toLowerCase();
-        bienesFiltrados.setPredicate(b -> codigo.isEmpty() || b.getCodigo().toLowerCase().contains(codigo));
+    private void filtrar() {
+        String texto = Formato.clave(txtBuscarCodigo.getText());
+        filtrados.setPredicate(b -> texto.isEmpty() || Formato.clave(b.codigo()).contains(texto));
     }
 
-    // --- Ver detalle simple ---
-    private void verBien(Bien bien) {
+    private void verDetalle(Bien b) {
         Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("Ver Bien");
+        dialog.setTitle("Ver bien");
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
-        String info = "Código: " + safe(bien.getCodigo()) + "\n"
-                + "Descripción: " + safe(bien.getDescripcion()) + "\n"
-                + "Marca: " + safe(bien.getMarca()) + "\n"
-                + "Modelo: " + safe(bien.getModelo()) + "\n"
-                + "N.Serie: " + safe(bien.getNumeroSerie()) + "\n"
-                + "Estado: " + safe(bien.getEstado());
+        VBox contenido = new VBox(10, new Label(
+                "Código: " + b.codigo() + "\n"
+                        + "Descripción: " + b.descripcion() + "\n"
+                        + "Marca: " + b.marca() + "\n"
+                        + "Modelo: " + b.modelo() + "\n"
+                        + "N. Serie: " + b.numeroSerie() + "\n"
+                        + "Estado: " + b.estado()));
+        if (b.imagen() != null) contenido.getChildren().add(vistaImagen(b.imagen(), 220));
 
-        VBox content = new VBox(10);
-        content.getChildren().add(new Label(info));
-
-        if (bien.getImagen() != null) {
-            Image img = new Image(new ByteArrayInputStream(bien.getImagen()));
-            ImageView imgView = new ImageView(img);
-            imgView.setFitWidth(220);
-            imgView.setFitHeight(220);
-            imgView.setPreserveRatio(true);
-            content.getChildren().add(imgView);
-        }
-
-        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setContent(contenido);
         dialog.showAndWait();
     }
 
-    // --- Formulario crear/editar ---
-    private void mostrarDialogoBien(Bien bien, boolean esNuevo) {
-        if (!isAdmin) { mostrarAlerta("No autorizado", Alert.AlertType.WARNING); return; }
-
+    private void mostrarFormulario(Bien existente) {
+        boolean nuevo = existente == null;
         Dialog<Bien> dialog = new Dialog<>();
-        dialog.setTitle(esNuevo ? "Nuevo Bien" : "Editar Bien");
+        dialog.setTitle(nuevo ? "Nuevo bien" : "Editar bien");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField txtCodigo = new TextField(esNuevo ? "" : bien.getCodigo());
-        TextField txtDescripcion = new TextField(esNuevo ? "" : bien.getDescripcion());
-        TextField txtMarca = new TextField(esNuevo ? "" : bien.getMarca());
-        TextField txtModelo = new TextField(esNuevo ? "" : bien.getModelo());
-        TextField txtSerie = new TextField(esNuevo ? "" : bien.getNumeroSerie());
+        TextField txtCodigo = new TextField(nuevo ? "" : existente.codigo());
+        TextField txtDescripcion = new TextField(nuevo ? "" : existente.descripcion());
+        TextField txtMarca = new TextField(nuevo ? "" : existente.marca());
+        TextField txtModelo = new TextField(nuevo ? "" : existente.modelo());
+        TextField txtSerie = new TextField(nuevo ? "" : existente.numeroSerie());
+        ComboBox<String> cmbEstado = new ComboBox<>(FXCollections.observableArrayList(Bien.ESTADOS));
+        cmbEstado.setValue(nuevo ? Bien.OPERATIVO : existente.estado());
 
-        ComboBox<String> cmbEstado = new ComboBox<>();
-        cmbEstado.getItems().addAll("Operativo", "Mantenimiento", "Baja");
-        cmbEstado.setValue(esNuevo ? "Operativo" : bien.getEstado());
-
-        // Imagen
-        Label lblImagen = new Label("Imagen:");
-        ImageView imgView = new ImageView();
-        imgView.setFitWidth(110); imgView.setFitHeight(110); imgView.setPreserveRatio(true);
-        final byte[][] imagenBytes = {null};
-        if (!esNuevo && bien.getImagen() != null) {
-            imgView.setImage(new Image(new ByteArrayInputStream(bien.getImagen())));
-            imagenBytes[0] = bien.getImagen();
-        }
-        Button btnSeleccionarImagen = new Button("Seleccionar Imagen");
-        btnSeleccionarImagen.setOnAction(ev -> {
+        byte[][] imagen = {nuevo ? null : existente.imagen()};
+        ImageView vista = vistaImagen(imagen[0], 110);
+        Button btnImagen = new Button("Seleccionar imagen");
+        Button btnQuitar = new Button("Quitar");
+        btnImagen.setOnAction(ev -> {
             FileChooser fc = new FileChooser();
-            fc.setTitle("Seleccionar Imagen");
+            fc.setTitle("Seleccionar imagen");
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes", "*.jpg", "*.jpeg", "*.png"));
-            File file = fc.showOpenDialog(btnSeleccionarImagen.getScene().getWindow());
-            if (file != null) {
-                try {
-                    imagenBytes[0] = leerArchivoComoBytes(file);
-                    imgView.setImage(new Image(new ByteArrayInputStream(imagenBytes[0])));
-                } catch (IOException ex) {
-                    mostrarAlerta("No se pudo leer la imagen", Alert.AlertType.ERROR);
-                }
+            File archivo = fc.showOpenDialog(btnImagen.getScene().getWindow());
+            if (archivo == null) return;
+            if (archivo.length() > BienRepository.MAX_BYTES_IMAGEN) {
+                Alertas.aviso(TITULO, "La imagen pesa demasiado (máximo " + BienRepository.MAX_BYTES_IMAGEN / 1024 + " KB).");
+                return;
+            }
+            try {
+                imagen[0] = Files.readAllBytes(archivo.toPath());
+                vista.setImage(new Image(new ByteArrayInputStream(imagen[0])));
+            } catch (IOException ex) {
+                Alertas.error(TITULO, "No se pudo leer la imagen.");
             }
         });
+        btnQuitar.setOnAction(ev -> { imagen[0] = null; vista.setImage(null); });
 
         GridPane grid = new GridPane();
-        grid.setVgap(12); grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setHgap(10);
         int r = 0;
-        grid.add(new Label("Código:"), 0, r); grid.add(txtCodigo, 1, r++);
-        grid.add(new Label("Descripción:"), 0, r); grid.add(txtDescripcion, 1, r++);
-        grid.add(new Label("Marca:"), 0, r); grid.add(txtMarca, 1, r++);
-        grid.add(new Label("Modelo:"), 0, r); grid.add(txtModelo, 1, r++);
-        grid.add(new Label("N.Serie:"), 0, r); grid.add(txtSerie, 1, r++);
-        grid.add(new Label("Estado:"), 0, r); grid.add(cmbEstado, 1, r++);
-        grid.add(lblImagen, 0, r); grid.add(imgView, 1, r++);
-        grid.add(btnSeleccionarImagen, 1, r);
-
+        grid.addRow(r++, new Label("Código:"), txtCodigo);
+        grid.addRow(r++, new Label("Descripción:"), txtDescripcion);
+        grid.addRow(r++, new Label("Marca:"), txtMarca);
+        grid.addRow(r++, new Label("Modelo:"), txtModelo);
+        grid.addRow(r++, new Label("N. Serie:"), txtSerie);
+        grid.addRow(r++, new Label("Estado:"), cmbEstado);
+        grid.addRow(r++, new Label("Imagen:"), vista);
+        grid.add(new HBox(8, btnImagen, btnQuitar), 1, r);
         dialog.getDialogPane().setContent(grid);
 
-        dialog.setResultConverter(btn -> {
-            if (btn == ButtonType.OK) {
-                return new Bien(
-                        txtCodigo.getText().trim(),
-                        txtDescripcion.getText().trim(),
-                        txtMarca.getText().trim(),
-                        txtModelo.getText().trim(),
-                        txtSerie.getText().trim(),
-                        cmbEstado.getValue(),
-                        imagenBytes[0]
-                );
-            }
-            return null;
-        });
+        dialog.setResultConverter(bt -> bt == ButtonType.OK
+                ? new Bien(nuevo ? null : existente.id(), txtCodigo.getText(), txtDescripcion.getText(),
+                        txtMarca.getText(), txtModelo.getText(), txtSerie.getText(), cmbEstado.getValue(), imagen[0])
+                : null);
 
-        Optional<Bien> res = dialog.showAndWait();
-        res.ifPresent(nuevo -> {
-            if (esNuevo) insertarBien(nuevo);
-            else actualizarBien(bien.getCodigo(), nuevo);
-        });
+        dialog.showAndWait().ifPresent(b -> Tareas.ejecutar(TITULO, () -> repo.guardar(b), guardado -> cargar()));
     }
 
-    // --- Capa de datos ---
-    private void cargarBienes() {
-        bienes.clear();
-        String sql = "SELECT * FROM bienes ORDER BY " + preferido(COLS_CODIGO, "codigo_inventario");
-        try (Connection cn = getConnection();
-             Statement st = cn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-             ResultSet rs = st.executeQuery(sql)) {
-
-            ResultSetMetaData md = rs.getMetaData();
-            int iCodigo = findIndex(md, COLS_CODIGO, true);
-            int iDesc   = findIndex(md, COLS_DESC, true);
-            int iMarca  = findIndex(md, COLS_MARCA, false);
-            int iModelo = findIndex(md, COLS_MODELO, false);
-            int iSerie  = findIndex(md, COLS_SERIE, false);
-            int iEstado = findIndex(md, COLS_ESTADO, true);
-            int iImagen = findIndex(md, COLS_IMAGEN, false);
-
-            while (rs.next()) {
-                bienes.add(new Bien(
-                        rs.getString(iCodigo),
-                        rs.getString(iDesc),
-                        iMarca  > 0 ? rs.getString(iMarca)  : "",
-                        iModelo > 0 ? rs.getString(iModelo) : "",
-                        iSerie  > 0 ? rs.getString(iSerie)  : "",
-                        mapEstadoDbToUi(rs.getString(iEstado)),
-                        iImagen > 0 ? rs.getBytes(iImagen)  : null
-                ));
-            }
-        } catch (SQLException e) {
-            mostrarAlerta("Error al cargar bienes", Alert.AlertType.ERROR);
-        }
-    }
-
-    private void insertarBien(Bien b) {
-        String sql = "INSERT INTO bienes (" +
-                preferido(COLS_CODIGO, "codigo_inventario") + "," +
-                preferido(COLS_DESC, "descripcion") + "," +
-                preferido(COLS_MARCA, "marca") + "," +
-                preferido(COLS_MODELO, "modelo") + "," +
-                preferido(COLS_SERIE, "numero_serie") + "," +
-                preferido(COLS_ESTADO, "estado") + "," +
-                preferido(COLS_IMAGEN, "imagen") +
-                ") VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setString(1, b.getCodigo());
-            ps.setString(2, b.getDescripcion());
-            ps.setString(3, emptyToNull(b.getMarca()));
-            ps.setString(4, emptyToNull(b.getModelo()));
-            ps.setString(5, emptyToNull(b.getNumeroSerie()));
-            ps.setString(6, mapEstadoUiToDb(b.getEstado()));
-            if (b.getImagen() != null) {
-                ps.setBinaryStream(7, new ByteArrayInputStream(b.getImagen()), b.getImagen().length);
-            } else {
-                ps.setNull(7, Types.BLOB);
-            }
-            ps.executeUpdate();
-            cargarBienes();
-        } catch (SQLException e) {
-            mostrarAlerta("Error al insertar bien", Alert.AlertType.ERROR);
-        }
-    }
-
-    private void actualizarBien(String codigoOriginal, Bien b) {
-        String colCod = preferido(COLS_CODIGO, "codigo_inventario");
-        String colDesc = preferido(COLS_DESC, "descripcion");
-        String colMarca = preferido(COLS_MARCA, "marca");
-        String colModelo = preferido(COLS_MODELO, "modelo");
-        String colSerie = preferido(COLS_SERIE, "numero_serie");
-        String colEstado = preferido(COLS_ESTADO, "estado");
-        String colImagen = preferido(COLS_IMAGEN, "imagen");
-
-        String sql = "UPDATE bienes SET " + colCod + "=?, " + colDesc + "=?, " + colMarca + "=?, " + colModelo + "=?, " +
-                colSerie + "=?, " + colEstado + "=?, " + colImagen + "=?, actualizado_en = SYSTIMESTAMP WHERE " + colCod + "=?";
-        try (Connection cn = getConnection(); PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setString(1, b.getCodigo());
-            ps.setString(2, b.getDescripcion());
-            ps.setString(3, emptyToNull(b.getMarca()));
-            ps.setString(4, emptyToNull(b.getModelo()));
-            ps.setString(5, emptyToNull(b.getNumeroSerie()));
-            ps.setString(6, mapEstadoUiToDb(b.getEstado()));
-            if (b.getImagen() != null) {
-                ps.setBinaryStream(7, new ByteArrayInputStream(b.getImagen()), b.getImagen().length);
-            } else {
-                ps.setNull(7, Types.BLOB);
-            }
-            ps.setString(8, codigoOriginal);
-            ps.executeUpdate();
-            cargarBienes();
-        } catch (SQLException e) {
-            mostrarAlerta("Error al actualizar bien", Alert.AlertType.ERROR);
-        }
-    }
-
-    // --- Estados ---
-    private String mapEstadoUiToDb(String ui) {
-        if (ui == null) return "OPERATIVO";
-        switch (ui.toUpperCase()) {
-            case "MANTENIMIENTO": return "MANTENIMIENTO";
-            case "BAJA": return "BAJA";
-            default: return "OPERATIVO";
-        }
-    }
-    private String mapEstadoDbToUi(String db) {
-        if (db == null) return "Operativo";
-        switch (db.toUpperCase()) {
-            case "MANTENIMIENTO": return "Mantenimiento";
-            case "BAJA": return "Baja";
-            default: return "Operativo";
-        }
-    }
-
-    // --- Modelo ---
-    public static class Bien {
-        private final SimpleStringProperty codigo, descripcion, marca, modelo, numeroSerie, estado;
-        private final byte[] imagen;
-
-        public Bien(String codigo, String descripcion, String marca, String modelo, String numeroSerie, String estado, byte[] imagen) {
-            this.codigo = new SimpleStringProperty(safe(codigo));
-            this.descripcion = new SimpleStringProperty(safe(descripcion));
-            this.marca = new SimpleStringProperty(safe(marca));
-            this.modelo = new SimpleStringProperty(safe(modelo));
-            this.numeroSerie = new SimpleStringProperty(safe(numeroSerie));
-            this.estado = new SimpleStringProperty(safe(estado));
-            this.imagen = imagen;
-        }
-        public String getCodigo() { return codigo.get(); }
-        public String getDescripcion() { return descripcion.get(); }
-        public String getMarca() { return marca.get(); }
-        public String getModelo() { return modelo.get(); }
-        public String getNumeroSerie() { return numeroSerie.get(); }
-        public String getEstado() { return estado.get(); }
-        public byte[] getImagen() { return imagen; }
-
-        public void setEstado(String e) { estado.set(safe(e)); }
-
-        public SimpleStringProperty codigoProperty() { return codigo; }
-        public SimpleStringProperty descripcionProperty() { return descripcion; }
-        public SimpleStringProperty marcaProperty() { return marca; }
-        public SimpleStringProperty modeloProperty() { return modelo; }
-        public SimpleStringProperty numeroSerieProperty() { return numeroSerie; }
-        public SimpleStringProperty estadoProperty() { return estado; }
-    }
-
-    // --- Utilidades ---
-    private static String safe(String s) { return s == null ? "" : s; }
-    private static String emptyToNull(String s) { return (s == null || s.isBlank()) ? null : s; }
-
-    private static String preferido(String[] candidatos, String fallback) {
-        return (candidatos != null && candidatos.length > 0) ? candidatos[0] : fallback;
-    }
-
-    private static int findIndex(ResultSetMetaData md, String[] posibles, boolean obligatorio) throws SQLException {
-        int cols = md.getColumnCount();
-        for (String nombre : posibles) {
-            for (int i = 1; i <= cols; i++) {
-                if (nombre.equalsIgnoreCase(md.getColumnName(i))) {
-                    return i;
-                }
-            }
-        }
-        if (obligatorio) throw new SQLException("No se encontró columna obligatoria: " + Arrays.toString(posibles));
-        return -1;
-    }
-
-    private byte[] leerArchivoComoBytes(File file) throws IOException {
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return fis.readAllBytes();
-        }
-    }
-
-    private void mostrarAlerta(String mensaje, Alert.AlertType tipo) {
-        mostrarAlerta("Bienes", mensaje, tipo);
-    }
-
-    private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
-        Alert alert = new Alert(tipo);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensaje);
-        alert.showAndWait();
-    }
-
-    private Connection getConnection() throws SQLException {
-        try {
-            Connection cn = Conexion.conectar();
-            try (Statement st = cn.createStatement()) {
-                st.execute("ALTER SESSION SET CURRENT_SCHEMA=" + SCHEMA_OWNER);
-            }
-            return cn;
-        } catch (ClassNotFoundException e) {
-            throw new SQLException("No se pudo cargar el driver Oracle", e);
-        }
+    private static ImageView vistaImagen(byte[] bytes, double tamano) {
+        ImageView vista = new ImageView();
+        vista.setFitWidth(tamano);
+        vista.setFitHeight(tamano);
+        vista.setPreserveRatio(true);
+        if (bytes != null) vista.setImage(new Image(new ByteArrayInputStream(bytes)));
+        return vista;
     }
 }
