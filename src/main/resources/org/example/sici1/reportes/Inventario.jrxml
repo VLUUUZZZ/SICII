@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Resguardo de inventario. Se compila al momento de imprimir y se llena con los datos de Firebase. -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="Inventario" pageWidth="595" pageHeight="842" columnWidth="535"
+              leftMargin="30" rightMargin="30" topMargin="30" bottomMargin="30">
+
+    <style name="Base" isDefault="true" fontName="SansSerif" fontSize="9"/>
+    <style name="Encabezado" fontSize="9" isBold="true" forecolor="#FFFFFF" backcolor="#1976D2" mode="Opaque"/>
+
+    <parameter name="INSTITUCION" class="java.lang.String"/>
+    <parameter name="FOLIO" class="java.lang.String"/>
+    <parameter name="FECHA" class="java.lang.String"/>
+    <parameter name="UNIDAD_ADMINISTRATIVA" class="java.lang.String"/>
+    <parameter name="ESPACIO" class="java.lang.String"/>
+    <parameter name="EDIFICIO" class="java.lang.String"/>
+    <parameter name="RESPONSABLE" class="java.lang.String"/>
+    <parameter name="PUESTO" class="java.lang.String"/>
+
+    <field name="CODIGO" class="java.lang.String"/>
+    <field name="DESCRIPCION" class="java.lang.String"/>
+    <field name="MARCA" class="java.lang.String"/>
+    <field name="MODELO" class="java.lang.String"/>
+    <field name="NUMERO_SERIE" class="java.lang.String"/>
+    <field name="ESTADO" class="java.lang.String"/>
+
+    <title>
+        <band height="130">
+            <textField>
+                <reportElement x="0" y="0" width="535" height="20"/>
+                <textElement textAlignment="Center"><font size="13" isBold="true"/></textElement>
+                <textFieldExpression><![CDATA[$P{INSTITUCION}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="22" width="535" height="18"/>
+                <textElement textAlignment="Center"><font size="11"/></textElement>
+                <text><![CDATA[Resguardo de inventario de bienes]]></text>
+            </staticText>
+            <line><reportElement x="0" y="46" width="535" height="1"/></line>
+
+            <staticText><reportElement x="0" y="54" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Unidad administrativa:]]></text></staticText>
+            <textField><reportElement x="125" y="54" width="240" height="14"/><textFieldExpression><![CDATA[$P{UNIDAD_ADMINISTRATIVA}]]></textFieldExpression></textField>
+            <staticText><reportElement x="370" y="54" width="45" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Folio:]]></text></staticText>
+            <textField><reportElement x="415" y="54" width="120" height="14"/><textFieldExpression><![CDATA[$P{FOLIO}]]></textFieldExpression></textField>
+
+            <staticText><reportElement x="0" y="70" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Espacio:]]></text></staticText>
+            <textField><reportElement x="125" y="70" width="240" height="14"/><textFieldExpression><![CDATA[$P{ESPACIO}]]></textFieldExpression></textField>
+            <staticText><reportElement x="370" y="70" width="45" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Fecha:]]></text></staticText>
+            <textField><reportElement x="415" y="70" width="120" height="14"/><textFieldExpression><![CDATA[$P{FECHA}]]></textFieldExpression></textField>
+
+            <staticText><reportElement x="0" y="86" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Edificio:]]></text></staticText>
+            <textField><reportElement x="125" y="86" width="240" height="14"/><textFieldExpression><![CDATA[$P{EDIFICIO}]]></textFieldExpression></textField>
+
+            <staticText><reportElement x="0" y="102" width="125" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Responsable:]]></text></staticText>
+            <textField><reportElement x="125" y="102" width="240" height="14"/><textFieldExpression><![CDATA[$P{RESPONSABLE}]]></textFieldExpression></textField>
+            <staticText><reportElement x="370" y="102" width="45" height="14"/><textElement><font isBold="true"/></textElement><text><![CDATA[Puesto:]]></text></staticText>
+            <textField isBlankWhenNull="true"><reportElement x="415" y="102" width="120" height="14"/><textFieldExpression><![CDATA[$P{PUESTO}]]></textFieldExpression></textField>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="18">
+            <staticText><reportElement style="Encabezado" x="0" y="0" width="85" height="18"/><box leftPadding="3"/><textElement verticalAlignment="Middle"/><text><![CDATA[Código]]></text></staticText>
+            <staticText><reportElement style="Encabezado" x="85" y="0" width="150" height="18"/><box leftPadding="3"/><textElement verticalAlignment="Middle"/><text><![CDATA[Descripción]]></text></staticText>
+            <staticText><reportElement style="Encabezado" x="235" y="0" width="65" height="18"/><box leftPadding="3"/><textElement verticalAlignment="Middle"/><text><![CDATA[Marca]]></text></staticText>
+            <staticText><reportElement style="Encabezado" x="300" y="0" width="75" height="18"/><box leftPadding="3"/><textElement verticalAlignment="Middle"/><text><![CDATA[Modelo]]></text></staticText>
+            <staticText><reportElement style="Encabezado" x="375" y="0" width="80" height="18"/><box leftPadding="3"/><textElement verticalAlignment="Middle"/><text><![CDATA[N. Serie]]></text></staticText>
+            <staticText><reportElement style="Encabezado" x="455" y="0" width="80" height="18"/><box leftPadding="3"/><textElement verticalAlignment="Middle"/><text><![CDATA[Estado]]></text></staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="16">
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true"><reportElement x="0" y="0" width="85" height="16"/><box leftPadding="3"><bottomPen lineWidth="0.5" lineColor="#CCCCCC"/></box><textFieldExpression><![CDATA[$F{CODIGO}]]></textFieldExpression></textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true"><reportElement x="85" y="0" width="150" height="16"/><box leftPadding="3"><bottomPen lineWidth="0.5" lineColor="#CCCCCC"/></box><textFieldExpression><![CDATA[$F{DESCRIPCION}]]></textFieldExpression></textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true"><reportElement x="235" y="0" width="65" height="16"/><box leftPadding="3"><bottomPen lineWidth="0.5" lineColor="#CCCCCC"/></box><textFieldExpression><![CDATA[$F{MARCA}]]></textFieldExpression></textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true"><reportElement x="300" y="0" width="75" height="16"/><box leftPadding="3"><bottomPen lineWidth="0.5" lineColor="#CCCCCC"/></box><textFieldExpression><![CDATA[$F{MODELO}]]></textFieldExpression></textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true"><reportElement x="375" y="0" width="80" height="16"/><box leftPadding="3"><bottomPen lineWidth="0.5" lineColor="#CCCCCC"/></box><textFieldExpression><![CDATA[$F{NUMERO_SERIE}]]></textFieldExpression></textField>
+            <textField isStretchWithOverflow="true" isBlankWhenNull="true"><reportElement x="455" y="0" width="80" height="16"/><box leftPadding="3"><bottomPen lineWidth="0.5" lineColor="#CCCCCC"/></box><textFieldExpression><![CDATA[$F{ESTADO}]]></textFieldExpression></textField>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="16">
+            <textField>
+                <reportElement x="0" y="2" width="535" height="14"/>
+                <textElement textAlignment="Right"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA["Página " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <summary>
+        <band height="110">
+            <textField>
+                <reportElement x="0" y="8" width="535" height="14"/>
+                <textElement><font isBold="true"/></textElement>
+                <textFieldExpression><![CDATA["Total de bienes: " + $V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <line><reportElement x="40" y="80" width="190" height="1"/></line>
+            <staticText><reportElement x="40" y="84" width="190" height="14"/><textElement textAlignment="Center"/><text><![CDATA[Entrega]]></text></staticText>
+            <line><reportElement x="305" y="80" width="190" height="1"/></line>
+            <textField><reportElement x="305" y="84" width="190" height="14"/><textElement textAlignment="Center"/><textFieldExpression><![CDATA["Recibe: " + $P{RESPONSABLE}]]></textFieldExpression></textField>
+        </band>
+    </summary>
+</jasperReport>

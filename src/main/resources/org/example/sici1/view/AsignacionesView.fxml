@@ -41,7 +41,7 @@
 
                 <Region HBox.hgrow="ALWAYS"/>
 
-                <!-- Botón de imprimir requerido por tu .java -->
+                <!-- Genera el PDF del resguardo -->
                 <Button fx:id="btnImprimir" text="Imprimir"
                         prefWidth="120" prefHeight="36"
                         style="-fx-background-color:#455a64; -fx-text-fill:white; -fx-font-size:14;"/>
