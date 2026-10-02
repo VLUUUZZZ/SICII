@@ -16,7 +16,7 @@
                 prefWidth="100" prefHeight="36"
                 style="-fx-background-color:#1976d2; -fx-text-fill:white; -fx-font-size:16;"/>
 
-        <!-- Botón Editar (opcional) -->
+        <!-- Botón Editar -->
         <Button fx:id="btnEditar" text="Editar" layoutX="540" layoutY="58"
                 prefWidth="100" prefHeight="36"
                 style="-fx-background-color:#ff8800; -fx-text-fill:white; -fx-font-size:16;"/>
@@ -34,11 +34,15 @@
                    prefWidth="700" prefHeight="360">
             <columns>
                 <TableColumn fx:id="colUsuario" text="Usuario" prefWidth="110"/>
-                <TableColumn fx:id="colNombre" text="Nombre" prefWidth="180"/>
-                <TableColumn fx:id="colRol" text="Rol" prefWidth="120"/>
+                <TableColumn fx:id="colNombre" text="Nombre" prefWidth="190"/>
+                <TableColumn fx:id="colRol" text="Rol" prefWidth="100"/>
+                <TableColumn fx:id="colPuesto" text="Puesto" prefWidth="140"/>
                 <TableColumn fx:id="colEstado" text="Estado" prefWidth="80"/>
-                <TableColumn fx:id="colSwitch" text="" prefWidth="60"/>
+                <TableColumn fx:id="colSwitch" text="Activo" prefWidth="60"/>
             </columns>
+            <placeholder>
+                <Label fx:id="lblVacio" text="Cargando..."/>
+            </placeholder>
         </TableView>
     </children>
 </AnchorPane>
