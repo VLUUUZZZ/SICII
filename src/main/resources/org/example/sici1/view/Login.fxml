@@ -40,7 +40,7 @@
             <Button text="INGRESAR" fx:id="loginButton" onAction="#handleLogin"
                     style="-fx-font-weight: bold; -fx-pref-width: 200;"/>
 
-            <Label fx:id="errorLabel" style="-fx-text-fill: red;"/>
+            <Label fx:id="errorLabel" wrapText="true" maxWidth="420" textAlignment="CENTER" style="-fx-text-fill: red;"/>
         </VBox>
     </center>
 </BorderPane>
