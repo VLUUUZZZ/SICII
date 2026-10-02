@@ -16,6 +16,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
+import org.example.sici1.Main;
 import org.example.sici1.data.CatalogoRepository;
 import org.example.sici1.data.EspacioRepository;
 import org.example.sici1.data.InventarioRepository;
@@ -30,7 +31,6 @@ import org.example.sici1.util.Sesion;
 import org.example.sici1.util.Tablas;
 import org.example.sici1.util.Tareas;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
@@ -215,19 +215,12 @@ public class AsignacionesView {
             List<Bien> bienes = repo.bienes(inv.id());
             ReporteInventario.exportarPdf(inv, bienes,
                     UsuarioRepository.INSTANCIA.buscar(inv.responsable()).orElse(null), destino);
-            abrirArchivo(destino);
             return destino;
-        }, archivo -> info("Reporte guardado en " + archivo.getAbsolutePath()));
-    }
-
-    private static void abrirArchivo(File archivo) {
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                Desktop.getDesktop().open(archivo);
-            }
-        } catch (Exception ignorada) {
-            // Si el sistema no puede abrirlo, el archivo de todas formas quedó guardado.
-        }
+        }, archivo -> {
+            info("Reporte guardado en " + archivo.getAbsolutePath());
+            // Se usa HostServices de JavaFX en lugar de java.awt.Desktop, que puede congelar la app en macOS.
+            if (Main.servicios() != null) Main.servicios().showDocument(archivo.toURI().toString());
+        });
     }
 
     private void info(String texto) {
